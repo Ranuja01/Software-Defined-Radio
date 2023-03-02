@@ -106,7 +106,7 @@ void split_audio_into_channels(const std::vector<float> &audio_data, std::vector
 // represented as 32-bit floats; we also assume two audio channels
 // note: check the python script that can read this type of files
 // and then reformat them to .wav files to be run on third-party players
-void write_audio_data(const std::string out_fname, const std::vector<float> &audio_)
+void write_audio_data(const std::string out_fname, const std::vector<float> &audio)
 {
 	// file descriptor for the output to be written
 	if (audio.size() != 0) {
@@ -145,7 +145,7 @@ void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std
 		}
 		endIndex = n;
 	}
-	startIndex = 1 + (endIndex + block.size() % dRate) - blockSize;
+	startIndex = 1 + (endIndex + block.size() % dRate) - block.size();
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
@@ -170,7 +170,7 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 	std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
 	demodulatedSignal[0] = 0;
 
-	for int k = 0; k < I.size(); k++){
+	for (int k = 0; k < I.size(); k++){
 		if (!(pow(I[k],2) + pow(Q[k],2) == 0)){
 			demodulatedSignal[k] = (1/((pow(I[k],2)) + (pow(Q[k],2)))) * (I[k] * (Q[k] - prevQ) - Q[k] * (I[k] - prevI));
 
@@ -206,8 +206,8 @@ int main()
   unsigned short int rf_decim = 10;
 
 	// audio variables
-	float Fs = 48000.0;	// sample rate for our "assumed" audio (change as needed for 48 ksamples/sec audio files)
-	float Fc = 16000.0;	// cutoff frequency (explore ... but up-to Nyquist only!)
+	float audio_Fs = 48000.0;	// sample rate for our "assumed" audio (change as needed for 48 ksamples/sec audio files)
+	float audio_Fc = 16000.0;	// cutoff frequency (explore ... but up-to Nyquist only!)
 	unsigned short int audio_taps = 151;
   unsigned short int audio_decim = 10;
 
@@ -242,7 +242,7 @@ int main()
 	unsigned short int startIndex_q = 0;
 	unsigned short int startIndex_audio = 0;
 
-  while (blockCount + 1) * blockSize < iq_data.size()){
+  while ((blockCount + 1) * blockSize < iq_data.size()){
     std::cout <<"Processing block: " << blockCount << std::endl;
 
     std::fill (filtered_i.begin(),filtered_i.end(),0);
