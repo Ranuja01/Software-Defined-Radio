@@ -188,7 +188,7 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 int main()
 {
 	// assume the wavio.py script was run beforehand to produce a binary file
-	const std::string in_fname = "../data/float32samples.bin";
+	const std::string in_fname = "../data/iq_samples.raw";
 	// declare vector where the audio data will be stored
 	std::vector<float> iq_data;
   std::vector<float> audio_data;
