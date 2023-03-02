@@ -129,20 +129,23 @@ void write_audio_data(const std::string out_fname, const std::vector<float> &aud
 	fdout.close();
 }
 
-void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block){
-	for (int n = 0; n < block.size(); n++){
+void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int &startIndex, int dRate){
+	int endIndex = 0;
+	for (int n = startIndex; n < block.size(); n++){
 		for (int k = 0; k < h.size(); k++){
-			if (n - k > 0){
+			if (n - k >= 0){
 				if (n - k < block.size()){
-					filtered_block[n] += h[k] * block[n-k];
+					filtered_block[(n - startIndex)/dRate] += h[k] * block[n-k];
 				}
 			}else {
 		  	if (n - k + num_taps < state.size()){
-					filtered_block[n] += h[k] * state[(n - k) + num_taps];
+					filtered_block[(n - startIndex)/dRate] += h[k] * state[(n - k) + num_taps];
 				}
 			}
 		}
+		endIndex = n;
 	}
+	startIndex = 1 + (endIndex + block.size() % dRate) - blockSize;
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
@@ -163,7 +166,7 @@ void makeOddEvenSubList (std::vector<float> &subList, const std::vector<float> &
 }
 
 void downSample (){
-  
+
 }
 
 
@@ -216,17 +219,20 @@ int main()
   std::vector<float> filtered_i, filtered_q;
   std::vector<float> block;
 
+	unsigned short int startIndex_i = 0;
+	unsigned short int startIndex_q = 0;
+
   while (blockCount + 1) * blockSize < iq_data.size()){
     std::cout <<"Processing block: " << blockCount << std::endl;
 
     std::fill (filtered_block.begin(),filtered_block.end(),0);
     makeOddEvenSubList(block,iq_data,blockCount*blockSize,(blockCount + 1)*blockSize);
-    blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_block);
+    blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_block,startIndex_i,rf_decim);
     filtered_i.insert( filtered_i.end(), filtered_block.begin(), filtered_block.end() );
 
     std::vector<float> filtered_block(blockSize, 0);
     makeOddEvenSubList(block,iq_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
-    blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_block);
+    blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_block,startIndex_q,rf_decim);
     filtered_q.insert(filtered_q.end(), filtered_block.begin(), filtered_block.end() );
 
 
