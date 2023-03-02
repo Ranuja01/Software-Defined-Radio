@@ -106,7 +106,7 @@ void split_audio_into_channels(const std::vector<float> &audio_data, std::vector
 // represented as 32-bit floats; we also assume two audio channels
 // note: check the python script that can read this type of files
 // and then reformat them to .wav files to be run on third-party players
-void write_audio_data(const std::string out_fname, const std::vector<float> &audio)
+void write_audio_data(const std::string out_fname, std::vector<float> &audio)
 {
 	// file descriptor for the output to be written
 	if (audio.size() == 0) {
@@ -189,7 +189,7 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 int main()
 {
 	// assume the wavio.py script was run beforehand to produce a binary file
-	const std::string in_fname = "../data/iq_samples.raw";
+	const std::string in_fname = "iq_samples.raw";
 	// declare vector where the audio data will be stored
 	std::vector<float> iq_data;
 
@@ -210,7 +210,7 @@ int main()
 	float audio_Fs = 48000.0;	// sample rate for our "assumed" audio (change as needed for 48 ksamples/sec audio files)
 	float audio_Fc = 16000.0;	// cutoff frequency (explore ... but up-to Nyquist only!)
 	unsigned short int audio_taps = 151;
-  unsigned short int audio_decim = 10;
+  unsigned short int audio_decim = 5;
 
 	int blockSize = 1024 * rf_decim * audio_decim * 2;
   int blockCount = 0;
