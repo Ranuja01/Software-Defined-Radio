@@ -192,10 +192,10 @@ int main()
 	const std::string in_fname = "../data/iq_samples.raw";
 	// declare vector where the audio data will be stored
 	std::vector<float> iq_data;
-  std::vector<float> audio_data;
+
 	// note: we allocate memory for audio_data from within this read function
 	read_audio_data(in_fname, iq_data);
-
+	std::vector<float> audio_data(iq_data.size(),0);
   for (int i = 0; i < iq_data.size(); i++){
     audio_data[i] = ((float)audio_data[i] - 128.0)/128.0;
   }
