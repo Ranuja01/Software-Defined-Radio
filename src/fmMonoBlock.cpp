@@ -84,7 +84,7 @@ void read_audio_data(const std::string in_fname, std::vector<float> &audio_data)
 	fdin.seekg(0, std::ios::beg);
 	// do a single read for audio data from the input file stream
 	fdin.read(reinterpret_cast<char*>(&audio_data[0]), \
-						num_samples*sizeof(float));
+						num_samples*sizeof(uint8_t));
 
 	// close the input file
 	fdin.close();
@@ -109,7 +109,7 @@ void split_audio_into_channels(const std::vector<float> &audio_data, std::vector
 void write_audio_data(const std::string out_fname, const std::vector<float> &audio)
 {
 	// file descriptor for the output to be written
-	if (audio.size() != 0) {
+	if (audio.size() == 0) {
 		std::cout << "Something got messed up with audio channels\n";
 		std::cout << "They must have the same size ... exiting\n";
 		exit(1);
@@ -121,6 +121,7 @@ void write_audio_data(const std::string out_fname, const std::vector<float> &aud
 		// we assume we have handled a stereo audio file
 		// hence, we must interleave the two channels
 		// (change as needed if testing with mono files)
+    audio[i] = (uint16_t)(audio[i]/2 * 32767);
 		fdout.write(reinterpret_cast<const char*>(&audio[i]),\
 								sizeof(audio[i]));
 		//fdout.write(reinterpret_cast<const char*>(&audio_right[i]),\
@@ -243,6 +244,7 @@ int main()
 	unsigned short int startIndex_audio = 0;
 
   while ((blockCount + 1) * blockSize < iq_data.size()){
+
     std::cout <<"Processing block: " << blockCount << std::endl;
 
     std::fill (filtered_i.begin(),filtered_i.end(),0);
