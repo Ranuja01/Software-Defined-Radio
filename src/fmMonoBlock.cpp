@@ -129,9 +129,9 @@ void write_audio_data(const std::string out_fname, const std::vector<float> &aud
 	fdout.close();
 }
 
-void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int &startIndex, int dRate){
+void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, unsigned short int &startIndex, int dRate){
 	int endIndex = 0;
-	for (int n = startIndex; n < block.size(); n++){
+	for (int n = startIndex; n < block.size(); n+=dRate){
 		for (int k = 0; k < h.size(); k++){
 			if (n - k >= 0){
 				if (n - k < block.size()){
@@ -165,7 +165,7 @@ void makeOddEvenSubList (std::vector<float> &subList, const std::vector<float> &
 
 }
 
-void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I, const std::vector<float> &Q, int &prevI, int &prevQ){
+void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I, const std::vector<float> &Q, float &prevI, float &prevQ){
 	//demodulatedSignal.clear();
 	std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
 	demodulatedSignal[0] = 0;
@@ -256,20 +256,20 @@ int main()
     //filtered_q.insert(filtered_q.end(), filtered_block.begin(), filtered_block.end() );
 
 
-		std::vector<float> demodulatedSignal = (filtered_i.size(),0);
+		std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
 
 		fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
 
-		std::vector<float> audio_block((fmDemod.size()/audio_decim) + 1, 0);
+		std::vector<float> audio_block((demodulatedSignal.size()/audio_decim) + 1, 0);
 
 		if (blockCount == 0){
-			for (int i = 0; i < audio_block.size(); i++){
+			for (int i = 0; i < audio_taps - 1; i++){
 				audio_state.push_back(0);
 			}
 		}
 
 		//std::fill (filtered_block.begin(),filtered_block.end(),0);
-    blockProcessing(audio_coeff, fmDemod, audio_state, audio_taps, audio_block,startIndex_audio, audio_decim);
+    blockProcessing(audio_coeff, demodulatedSignal, audio_state, audio_taps, audio_block,startIndex_audio, audio_decim);
     audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
 
 		blockCount += 1;
