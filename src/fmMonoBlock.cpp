@@ -106,10 +106,10 @@ void split_audio_into_channels(const std::vector<float> &audio_data, std::vector
 // represented as 32-bit floats; we also assume two audio channels
 // note: check the python script that can read this type of files
 // and then reformat them to .wav files to be run on third-party players
-void write_audio_data(const std::string out_fname, const std::vector<float> &audio_left, const std::vector<float> &audio_right)
+void write_audio_data(const std::string out_fname, const std::vector<float> &audio_)
 {
 	// file descriptor for the output to be written
-	if (audio_left.size() != audio_right.size()) {
+	if (audio.size() != 0) {
 		std::cout << "Something got messed up with audio channels\n";
 		std::cout << "They must have the same size ... exiting\n";
 		exit(1);
@@ -117,13 +117,13 @@ void write_audio_data(const std::string out_fname, const std::vector<float> &aud
 		std::cout << "Writing raw audio to \"" << out_fname << "\"\n";
 	}
 	std::ofstream fdout(out_fname, std::ios::binary);
-	for (int i=0; i<(int)audio_left.size(); i++) {
+	for (int i=0; i<(int)audio.size(); i++) {
 		// we assume we have handled a stereo audio file
 		// hence, we must interleave the two channels
 		// (change as needed if testing with mono files)
-		fdout.write(reinterpret_cast<const char*>(&audio_left[i]),\
-								sizeof(audio_left[i]));
-		fdout.write(reinterpret_cast<const char*>(&audio_right[i]),\
+		fdout.write(reinterpret_cast<const char*>(&audio[i]),\
+								sizeof(audio[i]));
+		//fdout.write(reinterpret_cast<const char*>(&audio_right[i]),\
 								sizeof(audio_right[i]));
 	}
 	fdout.close();
@@ -165,7 +165,22 @@ void makeOddEvenSubList (std::vector<float> &subList, const std::vector<float> &
 
 }
 
-void downSample (){
+void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I, const std::vector<float> &Q, int &prevI, int &prevQ){
+	//demodulatedSignal.clear();
+	std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
+	demodulatedSignal[0] = 0;
+
+	for int k = 0; k < I.size(); k++){
+		if (!(pow(I[k],2) + pow(Q[k],2) == 0)){
+			demodulatedSignal[k] = (1/((pow(I[k],2)) + (pow(Q[k],2)))) * (I[k] * (Q[k] - prevQ) - Q[k] * (I[k] - prevI));
+
+
+		}else {
+			demodulatedSignal[k] = 0;
+		}
+		prevI = I[k];
+		prevQ = Q[k];
+	}
 
 }
 
@@ -211,102 +226,57 @@ int main()
   std::vector<float> state_i(rf_taps - 1,0);
   std::vector<float> state_q(rf_taps - 1,0);
   std::vector<float> state_audio(audio_taps - 1,0);
-  std::vector<float> filtered_block(blockSize, 0);
+  std::vector<float> filtered_block((blockSize/rf_decim) + 1, 0);
 
   float prevI = 0;
   float prevQ = 0;
 
-  std::vector<float> filtered_i, filtered_q;
+	std::vector<float> audio_state;
+	std::vector<float> audio_data_final;
+
+  std::vector<float> filtered_i((blockSize/rf_decim) + 1, 0);
+	std::vector<float> filtered_q((blockSize/rf_decim) + 1, 0);
   std::vector<float> block;
 
 	unsigned short int startIndex_i = 0;
 	unsigned short int startIndex_q = 0;
+	unsigned short int startIndex_audio = 0;
 
   while (blockCount + 1) * blockSize < iq_data.size()){
     std::cout <<"Processing block: " << blockCount << std::endl;
 
-    std::fill (filtered_block.begin(),filtered_block.end(),0);
+    std::fill (filtered_i.begin(),filtered_i.end(),0);
     makeOddEvenSubList(block,iq_data,blockCount*blockSize,(blockCount + 1)*blockSize);
-    blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_block,startIndex_i,rf_decim);
-    filtered_i.insert( filtered_i.end(), filtered_block.begin(), filtered_block.end() );
+    blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
+    //filtered_i.insert( filtered_i.end(), filtered_block.begin(), filtered_block.end() );
 
-    std::vector<float> filtered_block(blockSize, 0);
+    std::fill (filtered_q.begin(),filtered_q.end(),0);
     makeOddEvenSubList(block,iq_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
-    blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_block,startIndex_q,rf_decim);
-    filtered_q.insert(filtered_q.end(), filtered_block.begin(), filtered_block.end() );
+    blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
+    //filtered_q.insert(filtered_q.end(), filtered_block.begin(), filtered_block.end() );
 
 
+		std::vector<float> demodulatedSignal = (filtered_i.size(),0);
 
+		fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
 
+		std::vector<float> audio_block((fmDemod.size()/audio_decim) + 1, 0);
 
-
-
-  }
-
-
-
-
-	// declare vectors where the audio left/right channels will be stored
-	std::vector<float> audio_left, audio_right;
-	// note: we allocate the memory for the left/right channels
-	// from within the split function that is called in the code below
-	split_audio_into_channels(audio_data, audio_left, audio_right);
-
-	// convolution code for filtering (reuse from the previous experiment)
-	std::vector<float> single_pass_left, single_pass_right;
-
-	if (input == 1){
-		std::cout << "BBBB";
-		convolveFIR(single_pass_left, audio_left, h);
-		convolveFIR(single_pass_right, audio_right, h);
-		// note: by default the above convolution produces zero on the output stream
-		// YOU will need to update the convolveFIR and impulseResponseLPF functions
-
-		// create a binary file to be read by wavio.py script to produce a .wav file
-		// note: small adjustments will need to be made to wavio.py, i.e., you should
-		// match the filenames, no need for self-checks as default Python code, ...
-		const std::string out_fname = "../data/float32filtered_single.bin";
-		write_audio_data(out_fname, single_pass_left,	single_pass_right);
-  } else {
-
-		std::cout << "AAAAA";
-
-		std::vector<float> filtered_left, filtered_right;
-
-		audio_left.resize(audio_left.size() + blockSize - audio_left.size() % blockSize,0);
-		audio_right.resize(audio_right.size() + blockSize - audio_right.size() % blockSize,0);
-
-		std::vector<float> block;
-    std::vector<float> block_right;
-
-		std::vector<float> state_left(h.size() - 1, 0);
-		std::vector<float> state_right(h.size() - 1, 0);
-		std::vector<float> filtered_block(blockSize, 0);
-		int blockNum = (int)(audio_left.size() / blockSize);
-
-		for (int i = 0; i < blockNum; i++){
-
-			std::fill (filtered_block.begin(),filtered_block.end(),0);
-			makeSubList(block,audio_left,i*blockSize,(i + 1)*blockSize);
-			blockProcessing(h, block, state_left, num_taps, filtered_block);
-		  filtered_left.insert( filtered_left.end(), filtered_block.begin(), filtered_block.end() );
-
-			//std::cout << "CCCCCCCCCCCC"<< std::endl;
-			//std::fill (filtered_block.begin(),filtered_block.end(),0);
-			std::vector<float> filtered_block_right(blockSize, 0);
-			makeSubList(block_right,audio_right,i*blockSize,(i + 1)*blockSize);
-		//
-			blockProcessing(h, block_right, state_right, num_taps, filtered_block_right);
-			//std::cout << "DDDDDD"<< std::endl;
-			filtered_right.insert(filtered_right.end(), filtered_block_right.begin(), filtered_block_right.end() );
-
+		if (blockCount == 0){
+			for (int i = 0; i < audio_block.size(); i++){
+				audio_state.push_back(0);
+			}
 		}
 
-		const std::string out_fname = "../data/float32filtered_block.bin";
+		//std::fill (filtered_block.begin(),filtered_block.end(),0);
+    blockProcessing(audio_coeff, fmDemod, audio_state, audio_taps, audio_block,startIndex_audio, audio_decim);
+    audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
 
+		blockCount += 1;
+  }
 
-		write_audio_data(out_fname, filtered_left,filtered_right);
+	const std::string out_fname = "../data/fmMonoBlock(cpp).wav";
+	write_audio_data(out_fname, audio_data_final);
 
-	}
 	return 0;
 }
