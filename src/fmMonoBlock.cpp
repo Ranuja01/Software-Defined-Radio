@@ -201,7 +201,8 @@ int main()
   }
 
   // RF variables
-  float rf_Fs = 240000.0;
+
+  float rf_Fs = 2400000.0;
 	float rf_Fc = 100000.0;
 	unsigned short int rf_taps = 151;
   unsigned short int rf_decim = 10;
@@ -276,6 +277,11 @@ int main()
 
 		blockCount += 1;
   }
+
+
+	for (int i = 0; i < audio_data_final.size(); i++){
+		std::cout << "AA: " << audio_data_final[i] << std::endl;
+	}
 
 	const std::string out_fname = "../data/fmMonoBlock(cpp).wav";
 	write_audio_data(out_fname, audio_data_final);
