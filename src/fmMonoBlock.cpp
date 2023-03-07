@@ -197,7 +197,7 @@ int main()
 	read_audio_data(in_fname, iq_data);
 	std::vector<float> audio_data(iq_data.size(),0);
   for (int i = 0; i < iq_data.size(); i++){
-    audio_data[i] = ((float)audio_data[i] - 128.0)/128.0;
+    audio_data[i] = ((float)iq_data[i] - 128.0)/128.0;
   }
 
   // RF variables
@@ -244,17 +244,17 @@ int main()
 	unsigned short int startIndex_q = 0;
 	unsigned short int startIndex_audio = 0;
 
-  while ((blockCount + 1) * blockSize < iq_data.size()){
+  while ((blockCount + 1) * blockSize < audio_data.size()){
 
     std::cout <<"Processing block: " << blockCount << std::endl;
 
     std::fill (filtered_i.begin(),filtered_i.end(),0);
-    makeOddEvenSubList(block,iq_data,blockCount*blockSize,(blockCount + 1)*blockSize);
+    makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
     blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
     //filtered_i.insert( filtered_i.end(), filtered_block.begin(), filtered_block.end() );
 
     std::fill (filtered_q.begin(),filtered_q.end(),0);
-    makeOddEvenSubList(block,iq_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
+    makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
     blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
     //filtered_q.insert(filtered_q.end(), filtered_block.begin(), filtered_block.end() );
 
