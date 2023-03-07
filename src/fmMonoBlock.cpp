@@ -62,7 +62,7 @@ void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::
 // represented as 32-bit floats; we also assume two audio channels
 // note: check the Python script that can prepare this type of files
 // directly from .wav files
-void read_audio_data(const std::string in_fname, std::vector<float> &audio_data)
+void read_audio_data(const std::string in_fname, std::vector<uint8_t> &audio_data)
 {
 	// file descriptor for the input to be read
 	std::ifstream fdin(in_fname, std::ios::binary);
@@ -191,11 +191,18 @@ int main()
 	// assume the wavio.py script was run beforehand to produce a binary file
 	const std::string in_fname = "iq_samples.raw";
 	// declare vector where the audio data will be stored
-	std::vector<float> iq_data;
+	std::vector<uint8_t> iq_data;
 
 	// note: we allocate memory for audio_data from within this read function
 	read_audio_data(in_fname, iq_data);
+
 	std::vector<float> audio_data(iq_data.size(),0);
+	//float a = iq_data[0]<<24;
+	/*
+	for (int i = 0; i < 50; i++){
+		std::cout << (float)iq_data[i] <<std::endl;
+	}*/
+
   for (int i = 0; i < iq_data.size(); i++){
     audio_data[i] = ((float)iq_data[i] - 128.0)/128.0;
   }
