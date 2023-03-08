@@ -143,11 +143,32 @@ void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std
 					filtered_block[(n - startIndex)/dRate] += h[k] * state[(n - k) + num_taps];
 				}
 			}
+
+
+
+
+
 		}
 		endIndex = n;
 	}
 	//startIndex = 1 + (endIndex + block.size() % dRate) - block.size();
 	startIndex = (endIndex - block.size()) + dRate;
+/*
+	for (int i = filtered_block.size() - 5140; i < filtered_block.size() - 5100;i++){
+		//std::cout << "aaaa: " << filtered_block[i] << std::endl;
+		//std::cout << "bbbb: " <<  block[i] << std::endl;
+	//	std::cout << "cccc: " <<  h[i] << std::endl;
+
+}
+	/*
+	for (int i = 51000; i < block.size();i++){
+	//	std::cout << "aaaa: " << filtered_block[i] << std::endl;
+		//std::cout << "bbbb: " <<  block[i] << std::endl;
+
+			std::cout << i << " dddd: " <<  block[i] << std::endl;
+			std::cout << (i)/dRate << " eeee: " <<  filtered_block[(i)/dRate] << std::endl;
+	}*/
+	//std::cout << "asdfghjkl: " << filtered_block[filtered_block.size() - 2] << std::endl;
 	//std::cout << startIndex << std::endl;
 	//startIndex = 0;
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
@@ -173,8 +194,8 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 	//demodulatedSignal.clear();
 	std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
 	demodulatedSignal[0] = 0;
-	std::cout <<I[0] <<std::endl;
-	std::cout <<Q[0] <<std::endl;
+//	std::cout <<I[0] <<std::endl;
+//	std::cout <<Q[0] <<std::endl;
 
 	for (int k = 0; k < I.size(); k++){
 		if (!( (I[k] * I[k]) + (Q[k] * Q[k]) == 0)){
@@ -187,9 +208,9 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 		prevI = I[k];
 		prevQ = Q[k];
 	}
-	std::cout <<prevI <<std::endl;
-	std::cout <<prevQ <<std::endl;
-	std::cout <<demodulatedSignal[0] <<std::endl;
+//	std::cout <<prevI <<std::endl;
+//	std::cout <<prevQ <<std::endl;
+//	std::cout <<demodulatedSignal[0] <<std::endl;
 }
 
 
@@ -244,7 +265,7 @@ int main()
   std::vector<float> state_i(rf_taps - 1,0);
   std::vector<float> state_q(rf_taps - 1,0);
   std::vector<float> state_audio(audio_taps - 1,0);
-  std::vector<float> filtered_block((blockSize/rf_decim) + 1, 0);
+  std::vector<float> filtered_block((blockSize/rf_decim), 0);
 
   float prevI = 0;
   float prevQ = 0;
@@ -252,8 +273,8 @@ int main()
 	std::vector<float> audio_state;
 	std::vector<float> audio_data_final;
 
-  std::vector<float> filtered_i((blockSize/rf_decim) + 1, 0);
-	std::vector<float> filtered_q((blockSize/rf_decim) + 1, 0);
+  std::vector<float> filtered_i((blockSize/(2 * rf_decim)), 0);
+	std::vector<float> filtered_q((blockSize/(2 * rf_decim)), 0);
   std::vector<float> block;
 
 	unsigned short int startIndex_i = 0;
@@ -267,8 +288,13 @@ int main()
     std::fill (filtered_i.begin(),filtered_i.end(),0);
     makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
     blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
+/*
 
-
+			//std::cout << "filtered block: " << filtered_i[n] << std::endl;
+			std::cout << "h[k]: " << rf_coeff[rf_coeff.size() - 1] << std::endl;
+			std::cout << "block[n-k]: " << block[block.size() - 1] << std::endl;
+			std::cout << "state[n-k + num_taps]: " <<  state_i[rf_taps - 5] << std::endl;
+*/
     //filtered_i.insert( filtered_i.end(), filtered_block.begin(), filtered_block.end() );
 
     std::fill (filtered_q.begin(),filtered_q.end(),0);
@@ -278,7 +304,9 @@ int main()
 
 
 		std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
-		std::cout << "bfd: " << filtered_i[filtered_i.size() - 2] << std::endl;
+	//	std::cout << "blocksize: " << blockSize<< std::endl;
+	//	std::cout << "filteredSize: " << filtered_i.size()<< std::endl;
+	//	std::cout << "bfd: " << filtered_i[filtered_i.size() - 2] << std::endl;
 		fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
 /*
 		std::cout << "qwertyu: " << block[1] << std::endl;
