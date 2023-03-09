@@ -132,24 +132,17 @@ void write_audio_data(const std::string out_fname, std::vector<float> &audio)
 //blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
 void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, unsigned short int &startIndex, int dRate){
 	int endIndex = 0;
-	for (int n = 0; n < block.size(); n+=dRate){
+	for (int n = startIndex; n < block.size(); n+=dRate){
 		//std::cout << "bbbb: " << n << std::endl;
 		for (int k = 0; k < h.size(); k++){
 			if (n - k >= 0){
 				if (n - k < block.size()){
 					filtered_block[(n - startIndex)/dRate] += h[k] * block[n-k];
-					if(k == 0 && n-k == 0){
-					//	std::cout << "bbbb: " <<  h[k] << std::endl;
-					//	std::cout << "cccc: " <<  block[n-k] << std::endl;
-					}
-					if(k == 0 && n-k == 10){
-					//	std::cout << "dddd: " <<  h[k] << std::endl;
-					//	std::cout << "eeee: " <<  block[n-k] << std::endl;
-					}
+
 				}
 			}else {
-		  	if (n - k + num_taps < state.size()){
-					filtered_block[(n - startIndex)/dRate] += h[k] * state[(n - k) + num_taps];
+		  	if (n - k + num_taps - 1 < state.size()){
+					filtered_block[(n - startIndex)/dRate] += h[k] * state[(n - k) + num_taps - 1];
 				}
 			}
 
@@ -188,7 +181,7 @@ void makeSubList (std::vector<float> &subList, const std::vector<float> &list, i
 	for (int i = first; i < last; i++){
 
 
-			std::cout << "uytrew: " << list[i] << std::endl;
+		//	std::cout << "uytrew: " << list[i] << std::endl;
 
 
 		subList.push_back(list[i]);
@@ -280,12 +273,12 @@ int main()
   std::vector<float> state_i(rf_taps - 1,0);
   std::vector<float> state_q(rf_taps - 1,0);
   std::vector<float> state_audio(audio_taps - 1,0);
-  std::vector<float> filtered_block((blockSize/rf_decim), 0);
+  //std::vector<float> filtered_block((blockSize/rf_decim), 0);
 
   float prevI = 0;
   float prevQ = 0;
 
-	std::vector<float> audio_state;
+	//std::vector<float> audio_state;
 	std::vector<float> audio_data_final;
 
   std::vector<float> filtered_i((blockSize/(2 * rf_decim)), 0);
@@ -295,6 +288,9 @@ int main()
 	unsigned short int startIndex_i = 0;
 	unsigned short int startIndex_q = 0;
 	unsigned short int startIndex_audio = 0;
+
+	std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
+	std::vector<float> audio_block((demodulatedSignal.size()/audio_decim), 0);
 
   while ((blockCount + 1) * blockSize < audio_data.size()){
 
@@ -306,11 +302,7 @@ int main()
 	//	std::cout << "bbbbbb: " << block.size() << std::endl;
 		//std::cout << "bbbbbb: " << blockSize << std::endl;
     blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
-		for (int i = block.size() - rf_taps + 1 ; i < block.size(); i++){
 
-			std::cout << "bfd: " << block[i] << std::endl;
-
-		}
 /*
 
 			//std::cout << "filtered block: " << filtered_i[n] << std::endl;
@@ -326,38 +318,49 @@ int main()
     //filtered_q.insert(filtered_q.end(), filtered_block.begin(), filtered_block.end() );
 
 
-		std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
+
 	//	std::cout << "blocksize: " << blockSize<< std::endl;
 	//	std::cout << "filteredSize: " << filtered_i.size()<< std::endl;
 	//	std::cout << "bfd: " << filtered_i[filtered_i.size() - 2] << std::endl;
+		std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
 		fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
+		for (int i = 0; i < 5; i++){
 
+		//	std::cout << "bfd: " << demodulatedSignal[i] << std::endl;
+
+		}
 		//std::cout << "qwertyu: " << block[1] << std::endl;
 
 
-		std::vector<float> audio_block((demodulatedSignal.size()/audio_decim), 0);
-
+		std::fill (audio_block.begin(),audio_block.end(),0);
+/*
 		if (blockCount == 0){
 			for (int i = 0; i < audio_taps - 1; i++){
 				audio_state.push_back(0);
 			}
-		}
-
-		//std::fill (filtered_block.begin(),filtered_block.end(),0);
-    blockProcessing(audio_coeff, demodulatedSignal, audio_state, audio_taps, audio_block,startIndex_audio, audio_decim);
-    audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
+		}*/
 		for (int i = 0; i < 5; i++){
 
-		//	std::cout << "bfd: " << audio_block[i] << std::endl;
+			std::cout << "abc: " << demodulatedSignal[i] << std::endl;
 
 		}
+		//std::fill (filtered_block.begin(),filtered_block.end(),0);
+		// blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
+    blockProcessing(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,startIndex_audio, audio_decim);
+		for (int i = 0; i < 5; i++){
+
+			std::cout << "bfd: " << audio_block[i] << std::endl;
+
+		}
+		audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
+
 		blockCount += 1;
   }
 
 
 	for (int i = 0; i < 5; i++){
 	//	if (audio_data_final[i] != 0){
-	//	std::cout << "AA: " << audio_data_final[i] << std::endl;
+		std::cout << "AA: " << audio_data_final[i] << std::endl;
 	//	}
 	}
 
