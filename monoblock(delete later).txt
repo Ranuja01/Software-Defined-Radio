@@ -6,9 +6,6 @@ Department of Electrical and Computer Engineering
 McMaster University
 Ontario, Canada
 */
-//g++ (filename).cpp -o (file)
-//     ./(file) | aplay -c 1 -f S16_LE -r 48000
-
 
 #include <iostream>
 #include <iomanip>
@@ -162,86 +159,20 @@ void split_audio_into_channels(const std::vector<float> &audio_data, std::vector
 // represented as 32-bit floats; we also assume two audio channels
 // note: check the python script that can read this type of files
 // and then reformat them to .wav files to be run on third-party players
-void write_audio_data(const std::string out_fname, std::vector<float> &audio, float audio_Fs)
+
+
+void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<short int> &play)
 {
-	// file descriptor for the output to be written
-	if (audio.size() == 0) {
-		std::cout << "Something got messed up with audio channels\n";
-		std::cout << "They must have the same size ... exiting\n";
-		exit(1);
-	} else {
-		std::cout << "Writing raw audio to \"" << out_fname << "\"\n";
-	}
 
-
-	uint32_t data_size = audio.size() * sizeof(uint16_t);
-
-	 // Fill out the header of the .wav file
-	 wav_header header;
-	 memcpy(header.riff_header, "RIFF", 4);
-	 header.file_size = 36 + data_size;
-	 memcpy(header.wave_header, "WAVE", 4);
-	 memcpy(header.fmt_header, "fmt ", 4);
-	 header.fmt_chunk_size = 16;
-	 header.audio_format = 1; // PCM
-	 header.num_channels = 1; // mono
-	 header.sample_rate = audio_Fs/2;
-	 header.byte_rate = audio_Fs * 2; // 2 bytes per sample
-	 header.block_align = 2; // 2 bytes per sample
-	 header.bits_per_sample = 16;
-	 memcpy(header.data_header, "data", 4);
-	 header.data_size = data_size;
-
-
-		std::ofstream fdout(out_fname, std::ios::out | std::ios::binary);
-
-							// Write the header to the output file
-  //  fdout.write(reinterpret_cast<char*>(&header), sizeof(wav_header));
-
-    // Write the binary data to the output file
-  //  fdout.write(reinterpret_cast<char*>(audio.data()), data_size);
-
-
-/*
-			 for (int i=0; i<(int)audio.size(); i++) {
-		 		// we assume we have handled a stereo audio file
-		 		// hence, we must interleave the two channels
-		 		// (change as needed if testing with mono files)
-		 		//std::cout << audio[i] << "  ";
-		     audio[i] = (uint16_t)(audio[i]/2.0 * 32767.0);
-		 		fdout.write(reinterpret_cast<const char*>(&audio[i]),\
-		 								sizeof(audio[i]));
-											fwrite(&audio[i], sizeof(uint16_t), audio.size(), stdout);
-									}*/
-
-/*
+  //block process writing to file
   std::vector<short int>sample(audio.size());
-	for(int k=0; k<audio.size(); k++){
 
+	for(int k=0; k<audio.size(); k++){
 		if(std::isnan(audio[k]))sample[k] = 0;
-
     else sample[k] = static_cast<short int>(audio[k]*16384);
-
-    fwrite(&sample[0], sizeof(short int), sample.size(), stdout);
-
-
 	}
-
-*/
-
-  short int sample;
-	for(int k=0; k<audio.size(); k++){
-
-		if(std::isnan(audio[k]))sample = 0;
-
-    else sample = static_cast<short int>(audio[k]*16384);
-
-    fwrite(&sample, 1, sizeof(short int), stdout);
-
-
-	}
-
-	fdout.close();
+  //append each block
+  play.insert(play.end(), sample.begin(), sample.end());
 }
 //blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
 void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, unsigned short int &startIndex, int dRate){
@@ -348,8 +279,10 @@ int main()
 {
 	// assume the wavio.py script was run beforehand to produce a binary file
 	const std::string in_fname = "iq_samples.raw";
-	// declare vector where the audio data will be stored
+
+  // declare vector where the audio data will be stored
 	std::vector<uint8_t> iq_data;
+  std::vector <short int> play;
 
 	// note: we allocate memory for audio_data from within this read function
 	read_audio_data(in_fname, iq_data);
@@ -460,7 +393,12 @@ int main()
 
 		//std::fill (filtered_block.begin(),filtered_block.end(),0);
     blockProcessing(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,startIndex_audio, audio_decim);
-    audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
+
+
+    write_audio_data(audio_block, audio_Fs/2, play);
+
+
+    //audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
 		for (int i = 0; i < 5; i++){
 
 		//	std::cout << "bfd: " << audio_block[i] << std::endl;
@@ -477,8 +415,13 @@ int main()
 	}
 
 
-	const std::string out_fname = "fmMonoBlock(cpp).bin";
-	write_audio_data(out_fname, audio_data_final, audio_Fs/2);
+  //write to file
+  const std::string out_fname = "fmMonoBlock(cpp).bin";
+  std::ofstream fdout(out_fname, std::ios::out | std::ios::binary);
+  fwrite(&play[0], sizeof(short int), play.size(), stdout);
+  fdout.close();
+
+
 
   std::vector<float> vector_index;
   genIndexVector(vector_index, audio_data_final.size());
