@@ -245,6 +245,7 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 	//demodulatedSignal.clear();
 	std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
 	demodulatedSignal[0] = 0;
+
 	std::cout <<"I "<< I[0] <<std::endl;
 	std::cout <<"Q "<<Q[0] <<std::endl;
 	std::cout <<"prevI "<<prevI <<std::endl;
@@ -311,6 +312,7 @@ int main()
   unsigned short int audio_upSample = 1;
   unsigned short int audio_taps = 151;
   unsigned short int audio_decim = 5;
+	int blockSize = 102400;
 
   if(mode == 0){
     rf_Fs = 2400000.0;
@@ -334,8 +336,9 @@ int main()
   	audio_Fc = 16000.0;	// cutoff frequency (explore ... but up-to Nyquist only!)
   	audio_taps = 151;
     audio_decim = 6;
+		blockSize = 1024 * rf_decim  * audio_decim * 2;
   }else if (mode == 2){
-
+		//std::cout << "uytghgtghytg" << std::endl;
     rf_Fs = 2400000.0;
   	rf_Fc = 100000.0;
   	rf_taps = 151;
@@ -344,8 +347,10 @@ int main()
   	audio_Fs = 44100.0;	// sample rate for our "assumed" audio (change as needed for 48 ksamples/sec audio files)
   	audio_Fc = 16000.0;	// cutoff frequency (explore ... but up-to Nyquist only!)
   	audio_taps = 151;
+
     audio_upSample = 147;
     audio_decim = 800;
+		blockSize = 8 * rf_decim  * audio_decim * 2;
 
   }else if (mode == 3){
     rf_Fs = 1920000.0;
@@ -362,7 +367,7 @@ int main()
     audio_decim = 1280;
   }
 
-  int blockSize = 1024 * rf_decim * audio_decim * 2;
+
   int blockCount = 0;
   int input = 2;
 
@@ -373,7 +378,7 @@ int main()
   std::vector<float> audio_coeff;
 	impulseResponseLPF(audio_Fs, audio_Fc, audio_taps, audio_coeff);
 // MAYBE WE NEED HANN WINDOW
-
+//	std::cout << "AAA" << std::endl;
   std::vector<float> state_i(rf_taps - 1,0);
   std::vector<float> state_q(rf_taps - 1,0);
   std::vector<float> state_audio(audio_taps - 1,0);
@@ -394,52 +399,45 @@ int main()
 	unsigned short int startIndex_audio = 0;
 
 	std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
-	std::vector<float> audio_block((demodulatedSignal.size()/audio_decim), 0);
+	std::vector<float> audio_block((demodulatedSignal.size()/audio_decim) * audio_upSample, 0);
+	std::cout << "a: " << blockSize << std::endl;
+	std::cout << "b: " << rf_Fs << std::endl;
+	std::cout << "c: " << audio_Fs << std::endl;
+	std::cout << "d: " << rf_decim << std::endl;
+	std::cout << "e: " << audio_decim << std::endl;
 
   while ((blockCount + 1) * blockSize < audio_data.size()){
 
     std::cout <<"Processing block: " << blockCount << std::endl;
-    if (rf_upSample == 1){
-      std::fill (filtered_i.begin(),filtered_i.end(),0);
-      makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
-  		//std::cout << "aaaaaa: " << filtered_i.size() << std::endl;
-  	//	std::cout << "bbbbbb: " << block.size() << std::endl;
-  		//std::cout << "bbbbbb: " << blockSize << std::endl;
+		//std::fill (filtered_i.begin(),filtered_i.end(),0);
+	//	std::cout << "BBB" << std::endl;
+    makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
+		std::cout << "CCC: " << block.size() << std::endl;
+	//	std::cout << "CCC" << std::endl;
+		//std::cout << "aaaaaa: " << filtered_i.size() << std::endl;
+	//	std::cout << "bbbbbb: " << block.size() << std::endl;
+		//std::cout << "bbbbbb: " << blockSize << std::endl;
+    blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
+		std::cout << "DDD: " << filtered_i.size() << std::endl;
+	//	std::cout << "DDD" << std::endl;
+/*
 
-      blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
-  /*
+			//std::cout << "filtered block: " << filtered_i[n] << std::endl;
+			std::cout << "h[k]: " << rf_coeff[rf_coeff.size() - 1] << std::endl;
+			std::cout << "block[n-k]: " << block[block.size() - 1] << std::endl;
+			std::cout << "state[n-k + num_taps]: " <<  state_i[rf_taps - 5] << std::endl;
+*/
+    //filtered_i.insert( filtered_i.end(), filtered_block.begin(), filtered_block.end() );
+		for (int i = 0; i < 10; i++){
 
-  			//std::cout << "filtered block: " << filtered_i[n] << std::endl;
-  			std::cout << "h[k]: " << rf_coeff[rf_coeff.size() - 1] << std::endl;
-  			std::cout << "block[n-k]: " << block[block.size() - 1] << std::endl;
-  			std::cout << "state[n-k + num_taps]: " <<  state_i[rf_taps - 5] << std::endl;
-  */
-      //filtered_i.insert( filtered_i.end(), filtered_block.begin(), filtered_block.end() );
-      std::fill (filtered_q.begin(),filtered_q.end(),0);
-      makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
-      blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
-      //filtered_q.insert(filtered_q.end(), filtered_block.begin(), filtered_block.end() );
-  } else{
-      std::fill (filtered_i.begin(),filtered_i.end(),0);
-      makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
-    //std::cout << "aaaaaa: " << filtered_i.size() << std::endl;
-  //	std::cout << "bbbbbb: " << block.size() << std::endl;
-    //std::cout << "bbbbbb: " << blockSize << std::endl;
+			std::cout << "bfd: " << block[i] << std::endl;
 
-      blockResample(rf_coeff, block, state_i, rf_taps, filtered_i,rf_decim,rf_upSample);
-  /*
-
-        //std::cout << "filtered block: " << filtered_i[n] << std::endl;
-        std::cout << "h[k]: " << rf_coeff[rf_coeff.size() - 1] << std::endl;
-        std::cout << "block[n-k]: " << block[block.size() - 1] << std::endl;
-        std::cout << "state[n-k + num_taps]: " <<  state_i[rf_taps - 5] << std::endl;
-  */
-      //filtered_i.insert( filtered_i.end(), filtered_block.begin(), filtered_block.end() );
-      std::fill (filtered_q.begin(),filtered_q.end(),0);
-      makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
-      blockResample(rf_coeff, block, state_q, rf_taps, filtered_q,rf_decim,rf_upSample);
-      //filtered_q.insert(filtered_q.end(), filtered_block.begin(), filtered_block.end() );
-  }
+		}
+    std::fill (filtered_q.begin(),filtered_q.end(),0);
+    makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
+    blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
+    //filtered_q.insert(filtered_q.end(), filtered_block.begin(), filtered_block.end() );
+	//	std::cout << "ZZZ" << std::endl;
 
 
 	//	std::cout << "blocksize: " << blockSize<< std::endl;
@@ -447,9 +445,11 @@ int main()
 	//	std::cout << "bfd: " << filtered_i[filtered_i.size() - 2] << std::endl;
 		std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
 		fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
-		for (int i = 0; i < 5; i++){
+		std::cout << "EEE: " << demodulatedSignal.size() << std::endl;
 
-		//	std::cout << "bfd: " << demodulatedSignal[i] << std::endl;
+		for (int i = 0; i < 10; i++){
+
+			std::cout << "qwer: " << block[i] << std::endl;
 
 		}
 		//std::cout << "qwertyu: " << block[1] << std::endl;
@@ -464,34 +464,38 @@ int main()
 		}*/
 		for (int i = 0; i < 5; i++){
 
-			std::cout << "abc: " << demodulatedSignal[i] << std::endl;
+	//		std::cout << "abc: " << demodulatedSignal[i] << std::endl;
 
 		}
 		//std::fill (filtered_block.begin(),filtered_block.end(),0);
 		// blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
-    if (audio_upSample == 1)
+    if (audio_upSample == 1){
       blockProcessing(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,startIndex_audio, audio_decim);
-    else
+			std::cout << "FFF: " << audio_block.size() << std::endl;
+		}else{
       blockResample(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,audio_decim,audio_upSample);
-
+		}
     for (int i = 0; i < 5; i++){
 
-			std::cout << "bfd: " << audio_block[i] << std::endl;
+	//		std::cout << "bfd: " << audio_block[i] << std::endl;
 
 		}
+	//	std::cout << audio_data_final.size()<< std::endl;
+	//	std::cout << demodulatedSignal.size()<< std::endl;
 		audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
-
+		std::cout << "GGG: " << audio_data_final.size() << std::endl;
+//		std::cout << "plokjhgf"<< std::endl;
 		blockCount += 1;
   }
 
 
 	for (int i = 0; i < 5; i++){
 	//	if (audio_data_final[i] != 0){
-		std::cout << "AA: " << audio_data_final[i] << std::endl;
+		//std::cout << "AA: " << audio_data_final[i] << std::endl;
 	//	}
 	}
 
-	const std::string out_fname = "../data/fmMonoBlock(cpp).bin";
+	const std::string out_fname = "../data/fmMonoBlock(Mode0).bin";
 	write_audio_data(out_fname, audio_data_final);
 
 	return 0;

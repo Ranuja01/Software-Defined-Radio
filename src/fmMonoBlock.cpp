@@ -291,18 +291,23 @@ int main()
 
 	std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
 	std::vector<float> audio_block((demodulatedSignal.size()/audio_decim), 0);
-
+	std::cout << "a: " << blockSize << std::endl;
+	std::cout << "b: " << rf_Fs << std::endl;
+	std::cout << "c: " << audio_Fs << std::endl;
+	std::cout << "d: " << rf_decim << std::endl;
+	std::cout << "e: " << audio_decim << std::endl;
   while ((blockCount + 1) * blockSize < audio_data.size()){
 
     std::cout <<"Processing block: " << blockCount << std::endl;
 
     std::fill (filtered_i.begin(),filtered_i.end(),0);
     makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
+		std::cout << "CCC: " << block.size() << std::endl;
 		//std::cout << "aaaaaa: " << filtered_i.size() << std::endl;
 	//	std::cout << "bbbbbb: " << block.size() << std::endl;
 		//std::cout << "bbbbbb: " << blockSize << std::endl;
     blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
-
+		std::cout << "DDD: " << filtered_i.size() << std::endl;
 /*
 
 			//std::cout << "filtered block: " << filtered_i[n] << std::endl;
@@ -311,7 +316,11 @@ int main()
 			std::cout << "state[n-k + num_taps]: " <<  state_i[rf_taps - 5] << std::endl;
 */
     //filtered_i.insert( filtered_i.end(), filtered_block.begin(), filtered_block.end() );
+		for (int i = 0; i < 10; i++){
 
+			std::cout << "bfd: " << block[i] << std::endl;
+
+		}
     std::fill (filtered_q.begin(),filtered_q.end(),0);
     makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
     blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
@@ -324,9 +333,11 @@ int main()
 	//	std::cout << "bfd: " << filtered_i[filtered_i.size() - 2] << std::endl;
 		std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
 		fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
-		for (int i = 0; i < 5; i++){
+		std::cout << "EEE: " << demodulatedSignal.size() << std::endl;
 
-		//	std::cout << "bfd: " << demodulatedSignal[i] << std::endl;
+		for (int i = 0; i < 10; i++){
+
+			std::cout << "qwer: " << block[i] << std::endl;
 
 		}
 		//std::cout << "qwertyu: " << block[1] << std::endl;
@@ -341,19 +352,20 @@ int main()
 		}*/
 		for (int i = 0; i < 5; i++){
 
-			std::cout << "abc: " << demodulatedSignal[i] << std::endl;
+		//	std::cout << "abc: " << demodulatedSignal[i] << std::endl;
 
 		}
 		//std::fill (filtered_block.begin(),filtered_block.end(),0);
 		// blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
     blockProcessing(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,startIndex_audio, audio_decim);
+		std::cout << "FFF: " << audio_block.size() << std::endl;
 		for (int i = 0; i < 5; i++){
 
-			std::cout << "bfd: " << audio_block[i] << std::endl;
+		//	std::cout << "bfd: " << audio_block[i] << std::endl;
 
 		}
 		audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
-
+		std::cout << "GGG: " << audio_data_final.size() << std::endl;
 		blockCount += 1;
   }
 
@@ -364,7 +376,7 @@ int main()
 	//	}
 	}
 
-	const std::string out_fname = "../data/fmMonoBlock(cpp).bin";
+	const std::string out_fname = "../data/fmMonoBlock(monoM0).bin";
 	write_audio_data(out_fname, audio_data_final);
 
 	return 0;
