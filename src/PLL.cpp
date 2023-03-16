@@ -2,7 +2,7 @@
 #include <vector>
 
 
-void fmPLL(std::vector <float>pllIn, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01, std::vector <float> PLLwave){
+void fmPLL(std::vector <float>pllIn, float freq, float Fs, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01, std::vector <float> PLLwave, float &integrator, float &feedbackI, float &feedbackQ, float &trigOffset, float &phaseEst){
 
     /*
     pllIn 	 		array of floats
@@ -45,12 +45,16 @@ void fmPLL(std::vector <float>pllIn, float freq, float Fs, float ncoScale = 1.0,
   std::vector <float> ncoOut(pllIn.size()+1, 0);
 
   	// initialize internal state
-  	float integrator = 0.0
-  	float phaseEst = 0.0
-  	float feedbackI = 1.0
-  	float feedbackQ = 0.0
-  	ncoOut[0] = 1.0
-  	float trigOffset = 0
+
+    //before block process, initialize the pointers below to 0
+    //float integrator = 0.0
+  	//float phaseEst = 0.0
+  	//float feedbackI = 1.0
+  	//float feedbackQ = 0.0
+
+  	//float trigOffset = 0
+
+    ncoOut[0] = 1.0
   	// note: state saving will be needed for block processing
     float errorI = 0 ;
     float errorQ = 0;
@@ -83,13 +87,6 @@ void fmPLL(std::vector <float>pllIn, float freq, float Fs, float ncoScale = 1.0,
   	//for RDS add also the quadrature NCO component to the output
 
     }
+
+    PLLwave.insert(PLLwave.end(), ncoOut.begin(), ncoOut.end());
 }
-/*
-
-
-
-	for k in range(len(pllIn)):
-
-
-
-*/
