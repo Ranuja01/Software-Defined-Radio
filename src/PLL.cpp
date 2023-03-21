@@ -87,6 +87,6 @@ void fmPLL(std::vector <float>pllIn, float freq, float Fs, float ncoScale = 2.0,
   	//for RDS add also the quadrature NCO component to the output
 
     }
-
-    PLLwave.insert(PLLwave.end(), ncoOut.begin(), ncoOut.end());
+    return ncoOut;
+    //PLLwave.insert(PLLwave.end(), ncoOut.begin(), ncoOut.end());
 }
