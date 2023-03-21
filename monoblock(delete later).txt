@@ -17,23 +17,8 @@ Ontario, Canada
 
 #define PI 3.14159265358979323846
 
-// Define the header of a .wav file
-struct wav_header {
-    char riff_header[4]; // "RIFF"
-    int file_size;
-    char wave_header[4]; // "WAVE"
-    char fmt_header[4]; // "fmt "
-    int fmt_chunk_size;
-    short audio_format;
-    short num_channels;
-    int sample_rate;
-    int byte_rate;
-    short block_align;
-    short bits_per_sample;
-    char data_header[4]; // "data"
-    int data_size;
-};
-
+//g++ (filename).cpp -o (file)
+//     ./(file) | aplay -c 1 -f S16_LE -r 48000
 
 // function to generate a vector whose value is equal to its index
 // this is useful when plotting a vector because we use the index on the X axis
@@ -174,6 +159,7 @@ void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<sho
   //append each block
   play.insert(play.end(), sample.begin(), sample.end());
 }
+
 //blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
 void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, unsigned short int &startIndex, int dRate){
 	int endIndex = 0;
