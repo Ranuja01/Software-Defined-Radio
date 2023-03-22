@@ -2,7 +2,7 @@
 #include <vector>
 
 
-std::vector <float> fmPLL(std::vector <float>pllIn, float freq, float Fs, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01, float &integrator, float &feedbackI, float &feedbackQ, float &trigOffset, float &phaseEst){
+std::vector <float> fmPLL(std::vector <float>pllIn, float freq, float Fs, float ncoScale, float phaseAdjust, float normBandwidth, float &integrator, float &feedbackI, float &feedbackQ, float &trigOffset, float &phaseEst){
 
     /*
     pllIn 	 		array of floats
