@@ -161,19 +161,26 @@ void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<sho
 }
 
 void blockConvolve(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block){
-	for (int n = 0; n < block.size(); n++){
+
+  std::cout << filtered_block.size() << " " << h.size() << "  " << block.size() << std::endl;
+  for (int n = 0; n < block.size(); n++){
 		for (int k = 0; k < h.size(); k++){
-			if (n - k > 0){
+			if (n - k >=0){
 				if (n - k < block.size()){
 					filtered_block[n] += h[k] * block[n-k];
+          std::cout<< "if   " << filtered_block[n] << std::endl;
+
 				}
 			}else {
 		  	if (n - k + num_taps - 1 < state.size()){
 					filtered_block[n] += h[k] * state[(n - k) + num_taps - 1];
+                    std::cout<< "else   " << filtered_block[n] << std::endl;
 				}
 			}
 		}
 	}
+
+  std::cout << "blockconv" << std::endl;
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
@@ -309,7 +316,8 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 void mono(std::vector<float> &audio_data_final)
 {
 
-  int mode = 1;
+  int mode = 0;
+
 
   // assume the wavio.py script was run beforehand to produce a binary file
   const std::string in_fname = "iq_samples.raw";

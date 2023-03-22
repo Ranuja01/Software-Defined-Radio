@@ -1,6 +1,12 @@
 
+#include <iostream>
+#include <iomanip>
+#include <fstream>
 #include <vector>
-
+#include <cmath>
+#include <cstring>
+#include <algorithm>
+#include "PLL.h"
 
 std::vector <float> fmPLL(std::vector <float>pllIn, float freq, float Fs, float ncoScale, float phaseAdjust, float normBandwidth, float &integrator, float &feedbackI, float &feedbackQ, float &trigOffset, float &phaseEst){
 
@@ -54,16 +60,20 @@ std::vector <float> fmPLL(std::vector <float>pllIn, float freq, float Fs, float 
 
   	//float trigOffset = 0
 
-    ncoOut[0] = 1.0
+    ncoOut[0] = 1.0;
   	// note: state saving will be needed for block processing
     float errorI = 0 ;
     float errorQ = 0;
 
-    for(int i=0; i<pllIn.size() i++){
+    float errorD = 0;
+    float trigArg = 0;
+
+
+    for(int i=0; i<pllIn.size(); i++){
 
       // phase detector
-  		errorI = pllIn[i] * (feedbackI);  # complex conjugate of the
-  		errorQ = pllIn[i] * (-1.0*feedbackQ);  # feedback complex exponential
+  		errorI = pllIn[i] * (feedbackI);  // complex conjugate of the
+  		errorQ = pllIn[i] * (-1.0*feedbackQ);  // feedback complex exponential
 
       // four-quadrant arctangent discriminator for phase error detection
   		errorD = atan(errorQ/errorI);

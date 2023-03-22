@@ -13,7 +13,7 @@ Ontario, Canada
 #include <vector>
 #include <cmath>
 
-#include "PLL.h"
+#include "PLL.cpp"
 #include "MonoBlock.cpp"
 
 
@@ -406,7 +406,6 @@ int main()
 
   std::vector<float> filtered_i((blockSize/(2 * rf_decim)), 0);
 	std::vector<float> filtered_q((blockSize/(2 * rf_decim)), 0);
-	std::vector<float> filtered_stereo ((audio_data_final.size()),0);
   std::vector<float> block;
 
 	std::vector<float> stereo_state(audio_taps - 1, 0);
@@ -515,16 +514,23 @@ int main()
 
     pll_block = fmPLL(pll_block, freq, fs, ncoScale, phaseadjust, normBandwidth, integrator, feedbackI, feedbackQ, trigOffset, phaseEst);
 
+    std::cout<< "asdbd" << std::endl;
+
 		std::vector<float> stereo_block ((pll_block.size()),0);
+    	std::vector<float> filtered_stereo ((pll_block.size()),0);
 		for (int i = 0; i < pll_block.size(); i++){
 	    stereo_block [i] = audio_block[i] * pll_block[i];
 	  }
 
 		audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
+
     pll.insert(pll.end(), pll_block.begin(), pll_block.end());
+    std::cout<< "asdbdoooooooooo" << std::endl;
+
 
 		blockConvolve(stereo_coeff, stereo_block, stereo_state, audio_taps, filtered_stereo);
 
+    std::cout<< "1111bd" << std::endl;
     stereo_data_final.insert(stereo_data_final.end(), stereo_block.begin(), stereo_block.end() );
 
 		blockCount += 1;
