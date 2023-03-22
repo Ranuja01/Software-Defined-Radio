@@ -167,7 +167,7 @@ void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std
 }
 
 
-void blockResample(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int dRate, int uRate){
+void blockResample1(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int dRate, int uRate){
   int p = 0;
   int j = 0;
 	for (int n = state.size(); n < block.size() + state.size(); n++){
@@ -184,6 +184,23 @@ void blockResample(std::vector<float> &h, const std::vector<float> &block, std::
 		}
 	}
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
+}
+
+void blockResample(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int dRate, int uRate){
+  int p = 0;
+  int j = 0;
+	for (int n = 0; n < block.size(); n++){
+    p = (n * dRate)%uRate;
+		for (int k = p; k < h.size(); k+= uRate){
+      j = (int)((n*dRate - k)/uRate);
+			if (j >= 0) {
+        if (j < block.size()){
+          filtered_block[n] += h[k] * block[j];
+        }
+      }
+		}
+	}
+	//makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
 
@@ -225,7 +242,7 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 int main()
 {
 
-  int mode = 2;
+  int mode = 0;
 
   // assume the wavio.py script was run beforehand to produce a binary file
   const std::string in_fname = "iq_samples.raw";
@@ -302,7 +319,8 @@ int main()
 
      audio_upSample = 147;
      audio_decim = 800;
- 		blockSize = 1024 * rf_decim  * audio_decim * 2;
+ 		//blockSize = 8 * rf_decim  * audio_decim * 2;
+    blockSize = audio_data.size();
 
    }else if (mode == 3){
      rf_Fs = 1920000.0;
@@ -346,8 +364,9 @@ int main()
   unsigned short int startIndex_i = 0;
   unsigned short int startIndex_q = 0;
   unsigned short int startIndex_audio = 0;
-
-  while ((blockCount + 1) * blockSize < audio_data.size()){
+  std::cout <<"asdassd" << blockSize << std::endl;
+  std::cout <<"jhgfd" << audio_data.size() << std::endl;
+  while ((blockCount + 1) * blockSize <= audio_data.size()){
     std::cout <<"Processing block: " << blockCount << std::endl;
 
     //separate IQ samples into I and Q
@@ -364,7 +383,8 @@ int main()
     fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
 
     //process audioblock
-    std::vector<float> audio_block((demodulatedSignal.size()/audio_decim), 0);
+    std::vector<float> audio_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
+
 
     std::cout<<"mega jorge \n";
     if (audio_upSample == 1){
@@ -374,20 +394,23 @@ int main()
       blockResample(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,audio_decim,audio_upSample);
 		}
 
+    for (int i = 0;i < 5; i++){ 
+      std::cout<<"JORGE: " << audio_block[i] <<std::endl;
+    }
     std::cout<<"asg \n";
-//    write_audio_data(audio_block, audio_Fs/2, play);
+    write_audio_data(audio_block, audio_Fs/2, play);
 
     blockCount += 1;
   }
 
 
-
+/*
   //write to file
   const std::string out_fname = "fmMonoBlock(cpp).bin";
   std::ofstream fdout(out_fname, std::ios::out | std::ios::binary);
   fwrite(&play[0], sizeof(short int), play.size(), stdout);
   fdout.close();
-
+*/
   /*
 
   std::vector<float> vector_index;
