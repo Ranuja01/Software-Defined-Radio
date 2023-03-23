@@ -61,9 +61,11 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
   // allocate memory for the impulse response
   h.clear(); h.resize(num_taps, 0.0);
 
+  // the rest of the code in this function is to be completed by you
+  // based on your understanding and the Python code from the first lab
+
   float norm_cutoff = Fc/(Fs/2);
 
-  //lowpass filter equation
   for (int i = 0; i < num_taps; i++){
     //  ****TRY SPLITTING IF STATEMENT INTO TWO FOR LOOPS****
     if (i == (num_taps - 1)/2){
@@ -89,6 +91,9 @@ void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::
       }
     }
   }
+  // the rest of the code in this function is to be completed by you
+  // based on your understanding and the Python code from the first lab
+
 }
 
 // function to read audio data from a binary file that contains raw samples
@@ -123,12 +128,30 @@ void read_audio_data(const std::string in_fname, std::vector<uint8_t> &audio_dat
   fdin.close();
 }
 
+// function to split an audio data where the left channel is in even samples
+// and the right channel is in odd samples
+void split_audio_into_channels(const std::vector<float> &audio_data, std::vector<float> &audio_left, std::vector<float> &audio_right)
+{
+  for (int i=0; i<(int)audio_data.size(); i++) {
+    if (i%2 == 0)
+      audio_left.push_back(audio_data[i]);
+    else
+      audio_right.push_back(audio_data[i]);
+  }
+}
+
+// function to write audio data to a binary file that contains raw samples
+// represented as 32-bit floats; we also assume two audio channels
+// note: check the python script that can read this type of files
+// and then reformat them to .wav files to be run on third-party players
+
+
 void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<short int> &play)
 {
+
   //block process writing to file
   std::vector<short int>sample(audio.size());
 
-  //process the block and cast
   for(int k=0; k<audio.size(); k++){
     if(std::isnan(audio[k]))sample[k] = 0;
     else sample[k] = static_cast<short int>(audio[k]*16384);
@@ -137,6 +160,7 @@ void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<sho
   play.insert(play.end(), sample.begin(), sample.end());
 }
 
+//blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
 void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, unsigned short int &startIndex, int dRate){
   int endIndex = 0;
   for (int n = 0; n < block.size(); n+=dRate){
@@ -159,21 +183,49 @@ void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std
           filtered_block[(n - startIndex)/dRate] += h[k] * state[(n - k) + num_taps - 1];
         }
       }
+
+
+
+
+
     }
     endIndex = n;
   }
+  //startIndex = 1 + (endIndex + block.size() % dRate) - block.size();
   startIndex = (endIndex - block.size()) + dRate;
+/*
+  for (int i = filtered_block.size() - 5140; i < filtered_block.size() - 5100;i++){
+    //std::cout << "aaaa: " << filtered_block[i] << std::endl;
+    //std::cout << "bbbb: " <<  block[i] << std::endl;
+  //	std::cout << "cccc: " <<  h[i] << std::endl;
+
+}
+  /*
+  for (int i = 51000; i < block.size();i++){
+  //	std::cout << "aaaa: " << filtered_block[i] << std::endl;
+    //std::cout << "bbbb: " <<  block[i] << std::endl;
+
+      std::cout << i << " dddd: " <<  block[i] << std::endl;
+      std::cout << (i)/dRate << " eeee: " <<  filtered_block[(i)/dRate] << std::endl;
+  }*/
+  //std::cout << "asdfghjkl: " << filtered_block[filtered_block.size() - 2] << std::endl;
+  //std::cout << startIndex << std::endl;
+  //startIndex = 0;
   makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
 
-void blockResample1(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int dRate, int uRate){
-  int p = 0;
+void blockResample(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int dRate, int uRate){
+	int p = 0;
   int j = 0;
+
 	for (int n = state.size(); n < block.size() + state.size(); n++){
+		//std::cout << "bbbb: " << n << std::endl;
     p = (n * dRate)%uRate;
 		for (int k = p; k < h.size(); k+= uRate){
+
       j = (int)((n*dRate - k)/uRate);
+
 			if (j >= 0) {
         if (j < state.size()){
           filtered_block[n - state.size()] += h[k] * state[j - state.size()];
@@ -181,12 +233,15 @@ void blockResample1(std::vector<float> &h, const std::vector<float> &block, std:
           filtered_block[n - state.size()] += h[k] * block[j - state.size()];
         }
       }
+
 		}
+
 	}
+
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
-void blockResample(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int dRate, int uRate){
+void blockResample1(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int dRate, int uRate){
   int p = 0;
   int j = 0;
 	for (int n = 0; n < block.size(); n++){
@@ -207,6 +262,11 @@ void blockResample(std::vector<float> &h, const std::vector<float> &block, std::
 void makeSubList (std::vector<float> &subList, const std::vector<float> &list, int first, int last){
   subList.clear();
   for (int i = first; i < last; i++){
+
+
+//			std::cout << "uytrew: " << list[i] << std::endl;
+
+
     subList.push_back(list[i]);
   }
 
@@ -221,21 +281,28 @@ void makeOddEvenSubList (std::vector<float> &subList, const std::vector<float> &
 }
 
 void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I, const std::vector<float> &Q, float &prevI, float &prevQ){
+  //demodulatedSignal.clear();
   std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
-
-
-  //demodulatedSignal[0] = 0;
+  demodulatedSignal[0] = 0;
+  /*
+  std::cout <<"I "<< I[0] <<std::endl;
+  std::cout <<"Q "<<Q[0] <<std::endl;
+  std::cout <<"prevI "<<prevI <<std::endl;
+  std::cout <<"prevQ "<<prevQ <<std::endl;
+*/
   for (int k = 0; k < I.size(); k++){
     if (!( (I[k] * I[k]) + (Q[k] * Q[k]) == 0)){
       demodulatedSignal[k] = (1.0/( (I[k] * I[k]) + (Q[k] * Q[k]) ) ) * (I[k] * (Q[k] - prevQ) - Q[k] * (I[k] - prevI));
+
+
     }else {
       demodulatedSignal[k] = 0;
     }
-
-    // state saving
     prevI = I[k];
     prevQ = Q[k];
   }
+
+//	std::cout <<demodulatedSignal[0] <<std::endl;
 }
 
 
@@ -255,8 +322,12 @@ int main()
   read_audio_data(in_fname, iq_data);
 
   std::vector<float> audio_data(iq_data.size(),0);
+  //float a = iq_data[0]<<24;
+  /*
+  for (int i = 0; i < 50; i++){
+    std::cout << (float)iq_data[i] <<std::endl;
+  }*/
 
-  //normalize data
   for (int i = 0; i < iq_data.size(); i++){
     audio_data[i] = ((float)iq_data[i] - 128.0)/128.0;
   }
@@ -275,7 +346,7 @@ int main()
   float audio_Fc = 16000.0;	// cutoff frequency (explore ... but up-to Nyquist only!)
 
   unsigned short int rf_upSample = 1;
-    unsigned short int audio_upSample = 1;
+  unsigned short int audio_upSample = 1;
   unsigned short int audio_taps = 151;
   unsigned short int audio_decim = 5;
 
@@ -305,7 +376,7 @@ int main()
    	audio_Fc = 16000.0;	// cutoff frequency (explore ... but up-to Nyquist only!)
    	audio_taps = 151;
      audio_decim = 6;
- 		blockSize = 1024 * rf_decim  * audio_decim * 4;
+ 		blockSize = 1024 * rf_decim  * audio_decim * 2;
    }else if (mode == 2){
  		//std::cout << "uytghgtghytg" << std::endl;
      rf_Fs = 2400000.0;
@@ -319,8 +390,8 @@ int main()
 
      audio_upSample = 147;
      audio_decim = 800;
- 		//blockSize = 8 * rf_decim  * audio_decim * 2;
-    blockSize = audio_data.size();
+ 		blockSize = 8 * rf_decim  * audio_decim * 2;
+    //blockSize = audio_data.size();
 
    }else if (mode == 3){
      rf_Fs = 1920000.0;
@@ -335,17 +406,18 @@ int main()
      audio_taps = 151;
      audio_upSample = 147;
      audio_decim = 1280;
-
-     blockSize = 8 * rf_decim  * audio_decim * 20;
+     blockSize = 8 * rf_decim * audio_decim * 2;
    }
 
 
-  // impulse response
+
+  // impulse response (reuse code from the previous experiment)
   std::vector<float> rf_coeff;
   impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_coeff);
 
   std::vector<float> audio_coeff;
   impulseResponseLPF(audio_Fs, audio_Fc, audio_taps, audio_coeff);
+// MAYBE WE NEED HANN WINDOW
 
   std::vector<float> state_i(rf_taps - 1,0);
   std::vector<float> state_q(rf_taps - 1,0);
@@ -355,6 +427,7 @@ int main()
   float prevI = 0;
   float prevQ = 0;
 
+//	std::vector<float> audio_state;
   std::vector<float> audio_data_final;
 
   std::vector<float> filtered_i((blockSize/(2 * rf_decim)), 0);
@@ -364,54 +437,45 @@ int main()
   unsigned short int startIndex_i = 0;
   unsigned short int startIndex_q = 0;
   unsigned short int startIndex_audio = 0;
-  std::cout <<"asdassd" << blockSize << std::endl;
-  std::cout <<"jhgfd" << audio_data.size() << std::endl;
+
   while ((blockCount + 1) * blockSize <= audio_data.size()){
+
     std::cout <<"Processing block: " << blockCount << std::endl;
 
-    //separate IQ samples into I and Q
     std::fill (filtered_i.begin(),filtered_i.end(),0);
     makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
+
     blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
 
     std::fill (filtered_q.begin(),filtered_q.end(),0);
     makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
     blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
 
-    //demodulate
     std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
+
     fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
 
-    //process audioblock
     std::vector<float> audio_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
-
-
-    std::cout<<"mega jorge \n";
+//std::vector<float> audio_block((demodulatedSignal.size()/audio_decim), 0);
+//audio_upSample = 1;
     if (audio_upSample == 1){
       blockProcessing(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,startIndex_audio, audio_decim);
 			std::cout << "FFF: " << audio_block.size() << std::endl;
 		}else{
       blockResample(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,audio_decim,audio_upSample);
 		}
-
-    for (int i = 0;i < 5; i++){ 
-      std::cout<<"JORGE: " << audio_block[i] <<std::endl;
-    }
-    std::cout<<"asg \n";
     write_audio_data(audio_block, audio_Fs/2, play);
 
     blockCount += 1;
   }
 
-
-/*
   //write to file
   const std::string out_fname = "fmMonoBlock(cpp).bin";
   std::ofstream fdout(out_fname, std::ios::out | std::ios::binary);
   fwrite(&play[0], sizeof(short int), play.size(), stdout);
   fdout.close();
-*/
-  /*
+
+
 
   std::vector<float> vector_index;
   genIndexVector(vector_index, audio_data_final.size());
@@ -440,7 +504,7 @@ int main()
 
 
   std::cout << "Run: gnuplot -e 'set terminal png size 1024,768' example.gnuplot > ../test/example2.png\n";
- */
+
 
   return 0;
 }

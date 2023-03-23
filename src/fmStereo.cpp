@@ -518,20 +518,27 @@ int main()
 
 		std::vector<float> stereo_block ((pll_block.size()),0);
     	std::vector<float> filtered_stereo ((pll_block.size()),0);
+
 		for (int i = 0; i < pll_block.size(); i++){
 	    stereo_block [i] = audio_block[i] * pll_block[i];
 	  }
-
+		for (int n = 0; n < 5; n++){
+			std::cout<< "a:   " << stereo_coeff[n] << std::endl;
+			std::cout<< "b:   " << stereo_block[n] << std::endl;
+			std::cout<< "c:   " << audio_block[n] << std::endl;
+			std::cout<< "d:   " << pll_block[n] << std::endl;
+		}
 		audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
 
     pll.insert(pll.end(), pll_block.begin(), pll_block.end());
     std::cout<< "asdbdoooooooooo" << std::endl;
 
 
+
 		blockConvolve(stereo_coeff, stereo_block, stereo_state, audio_taps, filtered_stereo);
 
     std::cout<< "1111bd" << std::endl;
-    stereo_data_final.insert(stereo_data_final.end(), stereo_block.begin(), stereo_block.end() );
+    stereo_data_final.insert(stereo_data_final.end(), filtered_stereo.begin(), filtered_stereo.end() );
 
 		blockCount += 1;
   }
