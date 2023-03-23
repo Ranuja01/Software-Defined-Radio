@@ -146,7 +146,7 @@ void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std
   int endIndex = 0;
 
   //convolution
-  for (int n = 0; n < block.size(); n+=dRate){
+  for (int n = startIndex; n < block.size(); n+=dRate){
 
     for (int k = 0; k < h.size(); k++){
       if (n - k >= 0){

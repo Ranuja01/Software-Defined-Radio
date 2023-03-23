@@ -266,11 +266,28 @@ int gcd(int a, int b) {
     return gcd(b, a % b);
 }
 */
+
+
+void write_stereo_data(std::vector<float> &audio, float audio_Fs, std::vector<short int> &play)
+{
+
+  //block process writing to file
+  std::vector<short int>sample(audio.size());
+
+  for(int k=0; k<audio.size(); k++){
+    if(std::isnan(audio[k]))sample[k] = 0;
+    else sample[k] = static_cast<short int>(audio[k]*16384);
+  }
+  //append each block
+  play.insert(play.end(), sample.begin(), sample.end());
+}
+
+
 int main()
 {
   int mode = 0;
 	// assume the wavio.py script was run beforehand to produce a binary file
-	const std::string in_fname = "iq_samples.raw";
+	const std::string in_fname = "stereo.raw";
 	// declare vector where the audio data will be stored
 	std::vector<uint8_t> iq_data;
 
@@ -576,26 +593,31 @@ float trigOffset = 0.0;
 
 	//g++ (filename).cpp -o (file)
 	//     ./(file) | aplay -c 1 -f S16_LE -r 48000
-	for (int i = 0; i < 5; i++){
-	//	if (audio_data_final[i] != 0){
-		//std::cout << "AA: " << audio_data_final[i] << std::endl;
-	//	}
-	}
+
 	std::vector<float> monoSignal;
 	mono(monoSignal);
 
   std::vector<float> stereoLeft ((stereo_data_final.size()),0);
-  std::vector<float> stereoRight ((stereo_data_final.size()),0);
+	std::vector<float> stereoRight ((stereo_data_final.size()),0);
+	std::vector<float> stereo ((stereo_data_final.size()*2),0);
 
   for (int i = 0; i < stereoLeft.size(); i++){
 
     stereoLeft [i] = (stereo_data_final[i] + monoSignal[i])/2;
     stereoRight [i] = (stereo_data_final[i] - monoSignal[i])/2;
-  }
 
-/*
-	const std::string out_fname = "../data/fmMonoBlock(cpp).bin";
-	write_audio_data(out_fname, audio_data_final);
-*/
+		stereo[2*i] = stereoLeft[i];
+		stereo[2*i+1] = stereoRight[i];
+	}
+
+	std::vector <short int> play (stereo.size(), 0);
+	write_stereo_data(stereo, audio_Fs/2, play);
+
+	//write to file and play in terminal
+  const std::string out_fname = "fmMonoBlock(cpp).wav";
+  std::ofstream fdout(out_fname, std::ios::out | std::ios::binary);
+  fwrite(&play[0], sizeof(short int), play.size(), stdout);
+  fdout.close();
+
 	return 0;
 }
