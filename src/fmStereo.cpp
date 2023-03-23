@@ -303,14 +303,29 @@ int main()
   float carrier_Fe = 19500.0;
 
   //variables for PLL block process
+	std::vector<float> pll_variables(5,0);
+	/*
+	pll_variables[0] = 0;
+	pll_variables[1] = 0;
+	pll_variables[2] = 1;
+	pll_variables[3] = 0;
+	pll_variables[4] = 0;
+*/
+/*
+float integrator = 0;
+float phaseEst = 0;
+float feedbackI = 1.0;
+float feedbackQ = 0.0;
+float trigOffset = 0.0;
 
-  float integrator = 0.0;
-  float phaseEst = 0;
+*/
+
+
+
 	float freq = 19000;
 	float fs = 48000;
-  float feedbackI = 1.0;
-  float feedbackQ = 0.0;
 	float phaseadjust = 0.0;
+
 	float normBandwidth = 0.01;
   float trigOffset = 0.0;
   float ncoScale = 2.0;
@@ -493,9 +508,10 @@ int main()
 		}*/
 		for (int i = 0; i < 5; i++){
 
-			std::cout << "abc: " << demodulatedSignal[i] << std::endl;
+		//	std::cout << "abc: " << demodulatedSignal[i] << std::endl;
 
 		}
+		std::vector<float> pll_block(audio_block.size(), 0);
 		//std::fill (filtered_block.begin(),filtered_block.end(),0);
 		// blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
     if (audio_upSample == 1){
@@ -507,37 +523,51 @@ int main()
     }
     for (int i = 0; i < 5; i++){
 
-			std::cout << "bfd: " << audio_block[i] << std::endl;
+		//	std::cout << "bfd: " << pll_block[i] << std::endl;
 
 		}
 
+		std::vector<float> pll_processed ((pll_block.size()),0);
+		std::cout<< "PLL:   " << prevI << std::endl;
 
-    pll_block = fmPLL(pll_block, freq, fs, ncoScale, phaseadjust, normBandwidth, integrator, feedbackI, feedbackQ, trigOffset, phaseEst);
+		/*
+		float integrator = 0;
+		float phaseEst = 0;
+		float feedbackI = 1.0;
+		float feedbackQ = 0.0;
+		float trigOffset = 0.0;
 
-    std::cout<< "asdbd" << std::endl;
+		*/
 
-		std::vector<float> stereo_block ((pll_block.size()),0);
-    	std::vector<float> filtered_stereo ((pll_block.size()),0);
+
+    fmPLL(pll_processed, pll_block, freq, fs, ncoScale, phaseadjust, normBandwidth,pll_variables);
+
+  //  std::cout<< "asdbd" << std::endl;
+
+		std::vector<float> stereo_block ((pll_processed.size()),0);
+    std::vector<float> filtered_stereo ((pll_processed.size()),0);
 
 		for (int i = 0; i < pll_block.size(); i++){
-	    stereo_block [i] = audio_block[i] * pll_block[i];
+	    stereo_block [i] = audio_block[i] * pll_processed[i];
 	  }
 		for (int n = 0; n < 5; n++){
+/*
 			std::cout<< "a:   " << stereo_coeff[n] << std::endl;
 			std::cout<< "b:   " << stereo_block[n] << std::endl;
 			std::cout<< "c:   " << audio_block[n] << std::endl;
-			std::cout<< "d:   " << pll_block[n] << std::endl;
+			std::cout<< "d:   " << pll_processed[n] << std::endl;
+*/
 		}
 		audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
 
     pll.insert(pll.end(), pll_block.begin(), pll_block.end());
-    std::cout<< "asdbdoooooooooo" << std::endl;
+    //std::cout<< "asdbdoooooooooo" << std::endl;
 
 
 
 		blockConvolve(stereo_coeff, stereo_block, stereo_state, audio_taps, filtered_stereo);
 
-    std::cout<< "1111bd" << std::endl;
+  //  std::cout<< "1111bd" << std::endl;
     stereo_data_final.insert(stereo_data_final.end(), filtered_stereo.begin(), filtered_stereo.end() );
 
 		blockCount += 1;
@@ -548,7 +578,7 @@ int main()
 	//     ./(file) | aplay -c 1 -f S16_LE -r 48000
 	for (int i = 0; i < 5; i++){
 	//	if (audio_data_final[i] != 0){
-		std::cout << "AA: " << audio_data_final[i] << std::endl;
+		//std::cout << "AA: " << audio_data_final[i] << std::endl;
 	//	}
 	}
 	std::vector<float> monoSignal;

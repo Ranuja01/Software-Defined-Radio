@@ -168,13 +168,13 @@ void blockConvolve(std::vector<float> &h, const std::vector<float> &block, std::
 			if (n - k >=0){
 				if (n - k < block.size()){
 					filtered_block[n] += h[k] * block[n-k];
-          std::cout<< "if   " << filtered_block[n] << std::endl;
+        //  std::cout<< "if   " << filtered_block[n] << std::endl;
 
 				}
 			}else {
 		  	if (n - k + num_taps - 1 < state.size()){
 					filtered_block[n] += h[k] * state[(n - k) + num_taps - 1];
-                    std::cout<< "else   " << filtered_block[n] << std::endl;
+          //          std::cout<< "else   " << filtered_block[n] << std::endl;
 				}
 			}
 		}

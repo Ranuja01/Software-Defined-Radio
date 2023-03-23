@@ -1,14 +1,14 @@
 
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <vector>
-#include <cmath>
-#include <cstring>
-#include <algorithm>
-#include "PLL.h"
 
-std::vector <float> fmPLL(std::vector <float>pllIn, float freq, float Fs, float ncoScale, float phaseAdjust, float normBandwidth, float &integrator, float &feedbackI, float &feedbackQ, float &trigOffset, float &phaseEst){
+#include "PLL.h"
+/*
+float integrator = 0;
+float phaseEst = 0;
+float feedbackI = 1.0;
+float feedbackQ = 0.0;
+float phaseadjust = 0.0;
+*/
+void fmPLL(std::vector <float>&pllOut, std::vector <float> &pllIn, float freq, float Fs, float ncoScale, float phaseAdjust, float normBandwidth,std::vector <float> &pllVariables ){
 
     /*
     pllIn 	 		array of floats
@@ -68,35 +68,63 @@ std::vector <float> fmPLL(std::vector <float>pllIn, float freq, float Fs, float 
     float errorD = 0;
     float trigArg = 0;
 
+    float kerr = 0;
+
+    //float integ = 0;
+    /*
+    float integrator = 0;
+    float phaseEst = 0;
+    float feedbackI = 1.0;
+    float feedbackQ = 0.0;
+    float phaseadjust = 0.0;
+    */
+
+    for(int i=0; i<pllVariables.size(); i++){
+      //  std::cout << i << "asdasd: " << pllVariables[i] << std::endl;
+    }
 
     for(int i=0; i<pllIn.size(); i++){
-
+      //std::cout << "3: " << integrator << std::endl;
       // phase detector
-  		errorI = pllIn[i] * (feedbackI);  // complex conjugate of the
-  		errorQ = pllIn[i] * (-1.0*feedbackQ);  // feedback complex exponential
+  		errorI = pllIn[i] * (pllVariables[2]);  // complex conjugate of the
+  		errorQ = pllIn[i] * (-1.0*(pllVariables[3]));  // feedback complex exponential
 
       // four-quadrant arctangent discriminator for phase error detection
-  		errorD = atan(errorQ/errorI);
-
+      if (errorI == 0){
+        errorD = 2*atan(1);
+      }else{
+  		    errorD = atan(errorQ/errorI);
+      }
   		//loop filter
-  		integrator = integrator + Ki*errorD;
+      //integrator = integ;
 
+
+      pllVariables[0] += Ki*errorD;
+
+      //pllIn[0] += errorD;
   		// update phase estimate
-  		phaseEst = phaseEst + Kp*errorD + integrator;
-
+      pllVariables[1] +=  Kp*errorD + pllVariables[0];
+  		//*phaseEst = *phaseEst + Kp*errorD + *integrator;
+/*
+      std::cout << "1: " << pllIn[0] << std::endl;
+      std::cout << "2: " << errorQ << std::endl;
+      std::cout << "3: " << pllVariables[0] << std::endl;
+      std::cout << "4: " << pllVariables[1]<< std::endl;
+      std::cout << "5: " << Ki*errorD << std::endl;*/
   		// internal oscillator
-  		trigOffset += 1;
-  		trigArg = 2*pi*(freq/Fs)*(trigOffset);
-  		feedbackI = cos(trigArg);
-  		feedbackQ = sin(trigArg);
-  		ncoOut[i+1] = cos(trigArg*ncoScale + phaseEst + phaseAdjust);
+      //std::cout << "fdes: " << pllIn[1024] << std::endl;
+  		pllVariables[4] += 1;
+  		trigArg = 2*pi*(freq/Fs)*(pllVariables[4]);
+  		pllVariables[2] = cos(trigArg);
+  		pllVariables[3] = sin(trigArg);
+  		ncoOut[i+1] = cos(trigArg*ncoScale + pllVariables[1] + phaseAdjust);
 
   	// for stereo only the in-phase NCO component should be returned
   	// for block processing you should also return the state
   	//return ncoOut
   	//for RDS add also the quadrature NCO component to the output
-
+    //std::cout<< "d:   " << ncoOut[i+1] << std::endl;
     }
-    return ncoOut;
+    pllOut = ncoOut;
     //PLLwave.insert(PLLwave.end(), ncoOut.begin(), ncoOut.end());
 }
