@@ -155,34 +155,13 @@ void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std
 	}
 	//startIndex = 1 + (endIndex + block.size() % dRate) - block.size();
 	startIndex = (endIndex - block.size()) + dRate;
-/*
-	for (int i = filtered_block.size() - 5140; i < filtered_block.size() - 5100;i++){
-		//std::cout << "aaaa: " << filtered_block[i] << std::endl;
-		//std::cout << "bbbb: " <<  block[i] << std::endl;
-	//	std::cout << "cccc: " <<  h[i] << std::endl;
 
-}
-	/*
-	for (int i = 51000; i < block.size();i++){
-	//	std::cout << "aaaa: " << filtered_block[i] << std::endl;
-		//std::cout << "bbbb: " <<  block[i] << std::endl;
-
-			std::cout << i << " dddd: " <<  block[i] << std::endl;
-			std::cout << (i)/dRate << " eeee: " <<  filtered_block[(i)/dRate] << std::endl;
-	}*/
-	//std::cout << "asdfghjkl: " << filtered_block[filtered_block.size() - 2] << std::endl;
-	//std::cout << startIndex << std::endl;
-	//startIndex = 0;
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
 void makeSubList (std::vector<float> &subList, const std::vector<float> &list, int first, int last){
 	subList.clear();
 	for (int i = first; i < last; i++){
-
-
-		//	std::cout << "uytrew: " << list[i] << std::endl;
-
 
 		subList.push_back(list[i]);
 	}
