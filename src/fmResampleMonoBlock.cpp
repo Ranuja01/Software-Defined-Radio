@@ -256,7 +256,7 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 int main()
 {
 
-  int mode = 0;
+  int mode = 2;
 
   const std::string in_fname = "iq_samples.raw";
 
@@ -334,7 +334,7 @@ int main()
 
      audio_upSample = 147;
      audio_decim = 800;
- 		blockSize = 8 * rf_decim  * audio_decim * 2;
+ 		blockSize = 1024 * rf_decim  * audio_decim/audio_upSample;
     //blockSize = audio_data.size();
 
    }else if (mode == 3){
