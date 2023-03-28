@@ -22,6 +22,15 @@ Ontario, Canada
 
 // function to generate a vector whose value is equal to its index
 // this is useful when plotting a vector because we use the index on the X axis
+
+void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float>&block_data){
+  std::vector<char> raw_data(num_samples);
+  std::cin.read(reinterpret_cast<char*>(&raw_data[0]),num_samples*sizeof(char));
+  for (int k=0; k< (int)num_samples;k++){
+    block_data[k] = float(((unsigned char)raw_data[k]-128)/128.0);
+    }
+}
+
 void genIndexVector(std::vector<float> &x, const int size) {
   x.clear(); x.resize(size, static_cast<float>(0));
   for (int i=0; i<size; i++) {
@@ -311,25 +320,21 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 int main()
 {
 
-  int mode = 2;
+  int mode = 1;
 
-  const std::string in_fname = "iq_samples.raw";
-
+  //const std::string in_fname = "my_samples_u8.raw";
   // declare vector where the audio data will be stored
-  std::vector<uint8_t> iq_data;
-  std::vector <short int> play;
-
+ // std::vector<uint8_t> iq_data;
+  //std::vector <short int> play;
   // note: we allocate memory for audio_data from within this read function
-  read_audio_data(in_fname, iq_data);
-
-  std::vector<float> audio_data(iq_data.size(),0);
-
-  //normalize iq samples
-  for (int i = 0; i < iq_data.size(); i++){
-    audio_data[i] = ((float)iq_data[i] - 128.0)/128.0;
-  }
-  std::cout << iq_data.size() <<std::endl;
-  std::cout << audio_data.size() <<std::endl;
+  //read_audio_data(in_fname, iq_data);
+  //std::vector<float> audio_data(iq_data.size(),0);
+  ////normalize iq samples
+  //for (int i = 0; i < iq_data.size(); i++){
+    //audio_data[i] = ((float)iq_data[i] - 128.0)/128.0;
+  //}
+  //std::cout << iq_data.size() <<std::endl;
+  //std::cout << audio_data.size() <<std::endl;
 
   // RF variables
 
@@ -352,6 +357,7 @@ int main()
   int input = 2;
   std::vector<float> filtMonoz(151, 0.0);
   std::vector<float> h;
+  std::vector<float> output_mono;
 
 
   //rewrite audio variables for each mode
@@ -438,17 +444,26 @@ int main()
   unsigned short int startIndex_q = 0;
   unsigned short int startIndex_audio = 0;
   std::vector<float> interF;
+  std::vector<float> block_data(blockSize);
 
-  while ((blockCount + 1) * blockSize <= audio_data.size()){
-
-    std::cout <<"Processing block: " << blockCount << std::endl;
+  for (unsigned int block_id =0; ;block_id++){
+    
+    
+    //reading
+    readStdinBlockData(blockSize,block_id,block_data);
+    if (std::cin.rdstate()!=0){
+      exit(1);
+      }
+      
+    
+    
 
     //RF front-end processing
     std::fill (filtered_i.begin(),filtered_i.end(),0);
-    makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
+    makeOddEvenSubList(block,block_data,blockCount*blockSize,(blockCount + 1)*blockSize);
     blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
     std::fill (filtered_q.begin(),filtered_q.end(),0);
-    makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
+    makeOddEvenSubList(block,block_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
     blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
     std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
     fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
@@ -467,45 +482,23 @@ int main()
 		}
 
     //process the data and convert it to data that can be played in .wav
-    write_audio_data(audio_block, audio_Fs/2, play);
+    //write_audio_data(audio_block, audio_Fs/2, play);
 
-    blockCount += 1;
-  }
+  
+  
 
   //write to file and play in terminal
-  const std::string out_fname = "fmMonoBlock(cpp).bin";
-  std::ofstream fdout(out_fname, std::ios::out | std::ios::binary);
-  fwrite(&play[0], sizeof(short int), play.size(), stdout);
-  fdout.close();
-/*
-  std::vector<float> vector_index;
-  genIndexVector(vector_index, audio_data_final.size());
-  // log time data in the "../data/" subfolder in a file with the following name
-  // note: .dat suffix will be added to the log file in the logVector function
-  logVector("demod_time", vector_index, audio_data_final);
-
-  //genIndexVector(vector_index, iq_data.size());
-  // log time data in the "../data/" subfolder in a file with the following name
-  // note: .dat suffix will be added to the log file in the logVector function
-
-  std::vector<float> v (iq_data.size(), 0);
-
-  for(int i =0; i < iq_data.size(); i++){
-
-    v[i] = iq_data[i] *1.0;
-
+  //const std::string out_fname = "fmMonoBlock(cpp).bin";
+  std::vector<short int> audio_data(audio_block.size());
+  for (unsigned int k=0;k<audio_block.size();k++){
+    if(std::isnan(audio_block[k])) audio_data[k]=0;
+    else audio_data[k] = static_cast<short int>(audio_block[k]*16384);
+    
+  }
+  fwrite(&audio_data[0], sizeof(short int), audio_data.size(), stdout);
+ 
   }
 
-  logVector("demod_time2", vector_index, v);
-
-//	genIndexVector(vector_index, audio_data.size());
-  // log time data in the "../data/" subfolder in a file with the following name
-  // note: .dat suffix will be added to the log file in the logVector function
-  logVector("demod_time3", vector_index, audio_data);
-
-
-  std::cout << "Run: gnuplot -e 'set terminal png size 1024,768' example.gnuplot > ../test/example2.png\n";
-*/
 
   return 0;
 }
