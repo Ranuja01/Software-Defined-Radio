@@ -44,31 +44,7 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
 	}
 }
 */
-void impulseResponseBPF(float Fs, float Fb, float Fe, unsigned short int num_taps, std::vector<float> &h)
-{
-	// allocate memory for the impulse response
-	h.clear(); h.resize(num_taps, 0.0);
 
-	// the rest of the code in this function is to be completed by you
-	// based on your understanding and the Python code from the first lab
-
-	float norm_center = ((Fe + Fb)/2)/(Fs/2);
-  float norm_pass = (Fe - Fb)/(Fs/2);
-
-
-
-	for (int i = 0; i < num_taps; i++){
-    //  ****TRY SPLITTING IF STATEMENT INTO TWO FOR LOOPS****
-		if (i == (num_taps - 1)/2){
-			h[i] = norm_pass;
-		} else {
-			h[i] = norm_pass * sin (PI * norm_pass * (i - (num_taps - 1)/2)) / (PI * norm_pass * (i - (num_taps - 1)/2));
-		}
-    h[i] *= cos(i*PI*norm_center);
-		h[i] *= pow(sin(PI * i / num_taps),2);
-
-	}
-}
 
 // function to read audio data from a binary file that contains raw samples
 // represented as 32-bit floats; we also assume two audio channels
@@ -328,6 +304,7 @@ int main()
 	pll_variables[3] = 0;
 	pll_variables[4] = 0;
 
+
 	float freq = 19000;
 	float fs = 48000;
 	float phaseadjust = 0.0;
@@ -411,6 +388,8 @@ int main()
 
 	std::vector<float> stereo_coeff;
 	impulseResponseLPF(48000, 19000, audio_taps, stereo_coeff);
+
+
 // MAYBE WE NEED HANN WINDOW
 
   std::vector<float> state_i(rf_taps - 1,0);

@@ -78,6 +78,32 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
   }
 }
 
+void impulseResponseBPF(float Fs, float Fb, float Fe, unsigned short int num_taps, std::vector<float> &h)
+{
+	// allocate memory for the impulse response
+	h.clear(); h.resize(num_taps, 0.0);
+
+	// the rest of the code in this function is to be completed by you
+	// based on your understanding and the Python code from the first lab
+
+	float norm_center = ((Fe + Fb)/2)/(Fs/2);
+  float norm_pass = (Fe - Fb)/(Fs/2);
+
+
+
+	for (int i = 0; i < num_taps; i++){
+    //  ****TRY SPLITTING IF STATEMENT INTO TWO FOR LOOPS****
+		if (i == (num_taps - 1)/2){
+			h[i] = norm_pass;
+		} else {
+			h[i] = norm_pass * sin (PI * norm_pass * (i - (num_taps - 1)/2)) / (PI * norm_pass * (i - (num_taps - 1)/2));
+		}
+    h[i] *= cos(i*PI*norm_center);
+		h[i] *= pow(sin(PI * i / num_taps),2);
+
+	}
+}
+
 // function for computing the impulse response (reuse from previous experiment)
 void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
 {
@@ -424,12 +450,17 @@ void mono(std::vector<float> &audio_data_final)
 
   std::vector<float> audio_coeff;
   impulseResponseLPF(audio_Fs, audio_Fc, audio_taps, audio_coeff);
+
+  std::vector<float> allPass_coeff;
+	impulseResponseLPF(48000,0, 100000, audio_taps, allPass_coeff);
+
 // MAYBE WE NEED HANN WINDOW
 
   std::vector<float> state_i(rf_taps - 1,0);
   std::vector<float> state_q(rf_taps - 1,0);
   std::vector<float> state_audio(audio_taps - 1,0);
   std::vector<float> filtered_block((blockSize/rf_decim), 0);
+  std::vector<float> allPass_State(audio_taps - 1,0);
 
   float prevI = 0;
   float prevQ = 0;
@@ -500,9 +531,9 @@ void mono(std::vector<float> &audio_data_final)
       blockResample(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,audio_decim,audio_upSample);
 		}
     //write_audio_data(audio_block, audio_Fs/2, play);
-
-
-    audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
+    std::vector<float> audio_block_filtered((demodulatedSignal.size()/audio_decim), 0);
+    blockConvolve(allPass_coeff, audio_block, allPass_State, audio_taps, audio_block_filtered);
+    audio_data_final.insert(audio_data_final.end(), audio_block_filtered.begin(), audio_block_filtered.end() );
     for (int i = 0; i < 5; i++){
 
     //	std::cout << "bfd: " << audio_block[i] << std::endl;
