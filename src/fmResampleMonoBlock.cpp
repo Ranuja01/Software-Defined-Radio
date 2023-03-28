@@ -49,7 +49,7 @@ void logVector(const std::string filename, \
       fd << y[i];
     fd << "\n";
   }
-  std::cout << "Generated " << dat_filename << " to be used by gnuplot\n";
+  //std::cout << "Generated " << dat_filename << " to be used by gnuplot\n";
   fd.close();
 }
 
@@ -106,7 +106,7 @@ void read_audio_data(const std::string in_fname, std::vector<uint8_t> &audio_dat
     std::cout << "File " << in_fname << " not found ... exiting\n";
     exit(1);
   } else {
-    //std::cout << "Reading raw audio from \"" << in_fname << "\"\n";
+    ////std::cout << "Reading raw audio from \"" << in_fname << "\"\n";
     std::cout << "Read raw RF data from \"" << in_fname <<"\" in unsigned 8-bit format" << std::endl;
   }
   // search for end of file to count the number of samples to be read
@@ -256,7 +256,7 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 int main()
 {
 
-  int mode = 2;
+  int mode = 0;
 
   const std::string in_fname = "iq_samples.raw";
 
@@ -273,8 +273,8 @@ int main()
   for (int i = 0; i < iq_data.size(); i++){
     audio_data[i] = ((float)iq_data[i] - 128.0)/128.0;
   }
-  std::cout << iq_data.size() <<std::endl;
-  std::cout << audio_data.size() <<std::endl;
+  //std::cout << iq_data.size() <<std::endl;
+  //std::cout << audio_data.size() <<std::endl;
 
   // RF variables
 
@@ -322,7 +322,7 @@ int main()
      audio_decim = 6;
  		blockSize = 1024 * rf_decim  * audio_decim * 4;
    }else if (mode == 2){
- 		//std::cout << "uytghgtghytg" << std::endl;
+ 		////std::cout << "uytghgtghytg" << std::endl;
      rf_Fs = 2400000.0;
    	rf_Fc = 100000.0;
    	rf_taps = 151;
@@ -382,7 +382,7 @@ int main()
 
   while ((blockCount + 1) * blockSize <= audio_data.size()){
 
-    std::cout <<"Processing block: " << blockCount << std::endl;
+    //std::cout <<"Processing block: " << blockCount << std::endl;
 
     //RF front-end processing
     std::fill (filtered_i.begin(),filtered_i.end(),0);
@@ -400,7 +400,7 @@ int main()
     //check if resample or down sample is needed
     if (audio_upSample == 1){
       blockProcessing(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,startIndex_audio, audio_decim);
-			std::cout << "FFF: " << audio_block.size() << std::endl;
+			//std::cout << "FFF: " << audio_block.size() << std::endl;
 		}else{
       blockResample(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,audio_decim,audio_upSample);
 		}
@@ -443,7 +443,7 @@ int main()
   logVector("demod_time3", vector_index, audio_data);
 
 
-  std::cout << "Run: gnuplot -e 'set terminal png size 1024,768' example.gnuplot > ../test/example2.png\n";
+  //std::cout << "Run: gnuplot -e 'set terminal png size 1024,768' example.gnuplot > ../test/example2.png\n";
 */
 
   return 0;

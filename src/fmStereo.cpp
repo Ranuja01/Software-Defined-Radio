@@ -321,23 +321,12 @@ int main()
 
   //variables for PLL block process
 	std::vector<float> pll_variables(5,0);
-	/*
+
 	pll_variables[0] = 0;
 	pll_variables[1] = 0;
 	pll_variables[2] = 1;
 	pll_variables[3] = 0;
 	pll_variables[4] = 0;
-*/
-/*
-float integrator = 0;
-float phaseEst = 0;
-float feedbackI = 1.0;
-float feedbackQ = 0.0;
-float trigOffset = 0.0;
-
-*/
-
-
 
 	float freq = 19000;
 	float fs = 48000;

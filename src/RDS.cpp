@@ -13,8 +13,8 @@ Ontario, Canada
 #include <vector>
 #include <cmath>
 
-#include "PLL.h"
-
+#include "PLL.cpp"
+//#include "MonoBlock.cpp"
 
 #define PI 3.14159265358979323846
 
@@ -158,6 +158,31 @@ void write_audio_data(const std::string out_fname, std::vector<float> &audio)
 	}
 	fdout.close();
 }
+
+void blockConvolve(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block){
+
+  std::cout << filtered_block.size() << " " << h.size() << "  " << block.size() << std::endl;
+  for (int n = 0; n < block.size(); n++){
+		for (int k = 0; k < h.size(); k++){
+			if (n - k >=0){
+				if (n - k < block.size()){
+					filtered_block[n] += h[k] * block[n-k];
+        //  std::cout<< "if   " << filtered_block[n] << std::endl;
+
+				}
+			}else {
+		  	if (n - k + num_taps - 1 < state.size()){
+					filtered_block[n] += h[k] * state[(n - k) + num_taps - 1];
+          //          std::cout<< "else   " << filtered_block[n] << std::endl;
+				}
+			}
+		}
+	}
+
+  std::cout << "blockconv" << std::endl;
+	makeSubList(state,block,block.size() - num_taps + 1, block.size());
+}
+
 //blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
 void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, unsigned short int &startIndex, int dRate){
 	int endIndex = 0;
@@ -294,12 +319,6 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 	std::cout <<demodulatedSignal[0] <<std::endl;
 }
 
-int gcd(int a, int b) {
-    if (b == 0) {
-        return a;
-    }
-    return gcd(b, a % b);
-}
 
 int main()
 {
@@ -340,14 +359,31 @@ int main()
   float RDS_carrier_Fb = 113500.0;
   float RDS_carrier_Fe = 114500.0;
 
-  //variables for PLL block process
+	//variables for PLL block process
+	std::vector<float> pll_variables(5,0);
 
+	pll_variables[0] = 0;
+	pll_variables[1] = 0;
+	pll_variables[2] = 1;
+	pll_variables[3] = 0;
+	pll_variables[4] = 0;
+
+/*
   float integrator = 0;
   float phaseEst = 0;
   float feedbackI = 1.0;
   float feedbackQ = 0.0;
   float trigOffset = 0.0;
   float ncoScale = 2.0;
+*/
+
+	float freq = 114000;
+	float fs = 48000;
+	float phaseadjust = 0.0;
+
+	float normBandwidth = 0.01;
+	float trigOffset = 0.0;
+	float ncoScale = 0.5;
 
   unsigned short int rf_upSample = 1;
   unsigned short int rf_taps = 151;
@@ -415,8 +451,8 @@ int main()
 	std::vector<float> rf_coeff;
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_coeff);
 
-  std::vector<float> RDS_coeff;
-	impulseResponseBPF(audio_Fs, RDS_Fb, RDS_Fe, audio_taps, RDS_coeff);
+  std::vector<float> audio_coeff;
+	impulseResponseBPF(audio_Fs, RDS_Fb, RDS_Fe, audio_taps, audio_coeff);
 
   std::vector<float> pll_coeff;
 	impulseResponseBPF(audio_Fs, RDS_carrier_Fb, RDS_carrier_Fe, audio_taps, pll_coeff);
@@ -424,13 +460,17 @@ int main()
   std::vector<float> allPass_coeff;
 	impulseResponseBPF(audio_Fs, 0, 100000, audio_taps, allPass_coeff);
 
+	std::vector<float> RDS_coeff;
+	impulseResponseLPF(48000, 3000, audio_taps, RDS_coeff);
+
 // MAYBE WE NEED HANN WINDOW
 
   std::vector<float> state_i(rf_taps - 1,0);
   std::vector<float> state_q(rf_taps - 1,0);
-  std::vector<float> state_RDS(audio_taps - 1,0);
+  std::vector<float> state_audio(audio_taps - 1,0);
   std::vector<float> state_allPass(audio_taps - 1,0);
   std::vector<float> state_pll(audio_taps - 1,0);
+	std::vector<float> RDS_state(audio_taps - 1, 0);
   //std::vector<float> filtered_block((blockSize/rf_decim), 0);
 
   float prevI = 0;
@@ -450,10 +490,10 @@ int main()
 
 
 
-  std::vector<float> RDS_filtered(RDS_block.size(), 0);
-  std::vector<float> pll_block(RDS_block.size(), 0);
-  std::vector<float> pll_filtered(RDS_block.size(), 0);
-  std::vector<float> pll;
+  //std::vector<float> RDS_filtered(RDS_block.size(), 0);
+  //std::vector<float> pll_block(RDS_block.size(), 0);
+
+//  std::vector<float> pll;
 
 
   while ((blockCount + 1) * blockSize < audio_data.size()){
@@ -495,7 +535,8 @@ int main()
 		//std::cout << "qwertyu: " << block[1] << std::endl;
 
 
-		std::vector<float> RDS_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
+		std::vector<float> audio_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
+		std::vector<float> pll_block(audio_block.size(), 0);
 /*
 		if (blockCount == 0){
 			for (int i = 0; i < audio_taps - 1; i++){
@@ -510,34 +551,38 @@ int main()
 		//std::fill (filtered_block.begin(),filtered_block.end(),0);
 		// blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
     if (audio_upSample == 1){
-      blockProcessing(RDS_coeff, demodulatedSignal, state_RDS, audio_taps, RDS_block,startIndex_audio, audio_decim);
+      blockProcessing(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,startIndex_audio, audio_decim);
       //blockConvolve(allPass_coeff, RDS_block, state_allPass, audio_taps, RDS_filtered);
       for (int i = 0; i < pll_block.size(); i++){
         pll_block[i] *= pll_block[i];
       }
     }else{
-      blockResample(audio_coeff, demodulatedSignal, state_RDS, audio_taps, RDS_block,audio_decim,audio_upSample);
+      blockResample(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,audio_decim,audio_upSample);
       //blockConvolve(allPass_coeff, RDS_block, state_allPass, audio_taps, RDS_filtered);
 
       for (int i = 0; i < pll_block.size(); i++){
         pll_block[i] *= pll_block[i];
       }
     }
-
-    blockConvolve(allPass_coeff, RDS_block, state_allPass, audio_taps, RDS_filtered);
+		std::vector<float> pll_filtered (pll_block.size(), 0);
+// ALL pass filter
+    blockConvolve(allPass_coeff, audio_block, state_allPass, audio_taps, audio_block);
+// Bandpass filter
     blockConvolve(pll_coeff, pll_block, state_pll, audio_taps, pll_filtered);
-    for (int i = 0; i < 5; i++){
 
-			std::cout << "bfd: " << audio_block[i] << std::endl;
+		std::vector<float> pll_processed (pll_block.size(), 0);
+    fmPLL(pll_processed,pll_filtered, freq, fs, ncoScale, phaseadjust, normBandwidth, pll_variables);
+		//fmPLL(pll_processed, pll_block, freq, fs, ncoScale, phaseadjust, normBandwidth,pll_variables);
+		std::vector<float> RDS_block ((pll_processed.size()),0);
+    std::vector<float> filtered_RDS ((pll_processed.size()),0);
 
-		}
-
-
-    pll_filtered = fmPLL(pll_filtered, freq, fs, ncoScale, phaseadjust, normBandwidth, PLLwave, integrator, feedbackI, feedbackQ, trigOffset, phaseEst)
-
+		for (int i = 0; i < pll_block.size(); i++){
+	    RDS_block [i] = audio_block[i] * pll_processed[i];
+	  }
+		blockConvolve(RDS_coeff, RDS_block, RDS_state, audio_taps, filtered_RDS);
 
 		RDS_data_final.insert(RDS_data_final.end(), audio_block.begin(), audio_block.end() );
-    pll.insert(pll.end(), pll_block.begin(), pll_block.end());
+  //  pll.insert(pll.end(), pll_block.begin(), pll_block.end());
 
 		blockCount += 1;
   }
@@ -545,60 +590,8 @@ int main()
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	for (int i = 0; i < 5; i++){
-	//	if (audio_data_final[i] != 0){
-		std::cout << "AA: " << RDS_data_final[i] << std::endl;
-	//	}
-	}
-
-  std::vector<float> stereoSignal ((RDS_data_final.size()),0);
-  std::vector<float> filtered_stereo ((RDS_data_final.size()),0);
-// MULTIPLY STERO WITH PLL signal and low pass filter it
-// pll[i] * signal[i]
-  for (int i = 0; i < stereoLeft.size(); i++){
-    stereoSignal [i] = RDS_data_final[i] * pll[i];
-  }
-
-
-// MOVE THE CONCOLUTION INTO THE WHILE LOOP FOR BLOCK
-// FOR RATIONAL RESAMPLER, TURN SIGNAL INTO 57KS
-// FOR DEMODULATION FIND PYTHON FILE FOR RRCF
-// 
-
-
-  blockSize = 1024;
-  blockCount = 0;
-
-  std::vector<float> stereo_coeff;
-	impulseResponseLPF(48000, 19000, audio_taps, stereo_coeff);
-
-  std::vector<float> stereo_block;
-	std::vector<float> stereo_state(audio_taps - 1, 0);
-  std::vector<float> stereo_data_final;
-
-  while ((blockCount + 1) * blockSize < stereoSignal.size()){
-
-    std::fill (filtered_q.begin(),filtered_q.end(),0);
-    makeSubList(block,stereoSignal,blockCount*blockSize,(blockCount + 1)*blockSize);
-    blockConvolve(stereo_coeff, stereo_block, stereo_state, audio_taps, filtered_stereo);
-
-    stereo_data_final.insert(stereo_data_final.end(), stereo_block.begin(), stereo_block.end() );
-    blockCount++;
-  }
-
-
-  std::vector<float> stereoLeft ((stereo_data_final.size()),0);
-  std::vector<float> stereoRight ((stereo_data_final.size()),0);
-
-  for (int i = 0; i < stereoLeft.size(); i++){
-
-    stereoLeft [i] = (stereo_data_final[i] + monoSignal[i])/2;
-    stereoRight [i] = (stereo_data_final[i] - monoSignal[i])/2;
-  }
-
-/*
-	const std::string out_fname = "../data/fmMonoBlock(cpp).bin";
-	write_audio_data(out_fname, audio_data_final);
-*/
 	return 0;
 }
+
+// FOR RATIONAL RESAMPLER, TURN SIGNAL INTO 57KS
+// FOR DEMODULATION FIND PYTHON FILE FOR RRCF
