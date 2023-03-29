@@ -127,7 +127,9 @@ void read_audio_data(const std::string in_fname, std::vector<uint8_t> &audio_dat
 }
 
 
+//void write_audio_data(std::vector<float> &audio, float audio_Fs/*, std::vector<short int> &play*/)
 void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<short int> &play)
+
 {
 
   //block process writing to file
@@ -137,7 +139,8 @@ void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<sho
     if(std::isnan(audio[k]))sample[k] = 0;
     else sample[k] = static_cast<short int>(audio[k]*16384);
   }
-  //append each block
+
+//  fwrite(&sample[0], sizeof(short int), sample.size(), stdout);
   play.insert(play.end(), sample.begin(), sample.end());
 }
 
@@ -280,7 +283,7 @@ int main()
 
   float rf_Fs = 2400000.0;
   float rf_Fc = 100000.0;
-  unsigned short int rf_taps = 151;
+  unsigned short int rf_taps = 51;
   unsigned short int rf_decim = 10;
 
   // audio variables
@@ -289,7 +292,7 @@ int main()
 
   unsigned short int rf_upSample = 1;
   unsigned short int audio_upSample = 1;
-  unsigned short int audio_taps = 151;
+  unsigned short int audio_taps = 51;
   unsigned short int audio_decim = 5;
 
   int blockSize = 1024 * rf_decim * audio_decim * 2;
@@ -380,6 +383,13 @@ int main()
   unsigned short int startIndex_q = 0;
   unsigned short int startIndex_audio = 0;
 
+  //append each block
+  const std::string out_fname = "fmMonoBlock(cpp).bin";
+  std::ofstream fdout(out_fname, std::ios::out | std::ios::binary);
+
+  std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
+      std::vector<float> audio_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
+
   while ((blockCount + 1) * blockSize <= audio_data.size()){
 
     //std::cout <<"Processing block: " << blockCount << std::endl;
@@ -391,12 +401,15 @@ int main()
     std::fill (filtered_q.begin(),filtered_q.end(),0);
     makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
     blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
-    std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
+
+    std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
     fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
 
 
     //Mono processing
-    std::vector<float> audio_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
+    std::fill (audio_block.begin(), audio_block.end(), 0);
+
+
     //check if resample or down sample is needed
     if (audio_upSample == 1){
       blockProcessing(audio_coeff, demodulatedSignal, state_audio, audio_taps, audio_block,startIndex_audio, audio_decim);
@@ -406,15 +419,13 @@ int main()
 		}
 
     //process the data and convert it to data that can be played in .wav
-    write_audio_data(audio_block, audio_Fs/2, play);
+    write_audio_data(audio_block, audio_Fs/2,play);
 
     blockCount += 1;
   }
-
+fwrite(&play[0], sizeof(short int), play.size(), stdout);
   //write to file and play in terminal
-  const std::string out_fname = "fmMonoBlock(cpp).bin";
-  std::ofstream fdout(out_fname, std::ios::out | std::ios::binary);
-  fwrite(&play[0], sizeof(short int), play.size(), stdout);
+
   fdout.close();
 /*
   std::vector<float> vector_index;

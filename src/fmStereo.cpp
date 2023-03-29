@@ -513,7 +513,7 @@ int main()
 		}
 
 		std::vector<float> pll_processed ((pll_block.size()),0);
-		std::cout<< "PLL:   " << prevI << std::endl;
+		//std::cout<< "PLL:   " << prevI << std::endl;
 
 		/*
 		float integrator = 0;
@@ -551,7 +551,11 @@ int main()
 
 
 		blockConvolve(stereo_coeff, stereo_block, stereo_state, audio_taps, filtered_stereo);
+    for (int i = 0; i < 5; i++){
 
+    //  std::cout <<"stereo: " << filtered_stereo[i] << std::endl;
+
+    }
   //  std::cout<< "1111bd" << std::endl;
     stereo_data_final.insert(stereo_data_final.end(), filtered_stereo.begin(), filtered_stereo.end() );
 
@@ -572,11 +576,37 @@ int main()
   for (int i = 0; i < stereoLeft.size(); i++){
 
     stereoLeft [i] = (stereo_data_final[i] + monoSignal[i])/2;
-    stereoRight [i] = (stereo_data_final[i] - monoSignal[i])/2;
+    stereoRight [i] = (monoSignal[i] - stereo_data_final[i])/2;
 
 		stereo[2*i] = stereoLeft[i];
 		stereo[2*i+1] = stereoRight[i];
 	}
+/*
+  for (int i = 0; i < 5; i++){
+
+  //  std::cout <<"left: " << stereoLeft[i] << std::endl;
+  //  std::cout <<"right: " << stereoRight[i] << std::endl;
+  }
+  for (int i = 0; i < 15; i++){
+
+
+    std::cout <<"left: " << stereoLeft[i] << std::endl;
+
+  }
+
+  for (int i = 0; i < 15; i++){
+
+
+    std::cout <<"right: " << stereoRight[i] << std::endl;
+
+  }
+
+  for (int i = 0; i < 15; i++){
+
+
+    std::cout <<"stereo final: " << stereo[i] << std::endl;
+
+  }*/
 
 	std::vector <short int> play (stereo.size(), 0);
 	write_stereo_data(stereo, audio_Fs/2, play);
