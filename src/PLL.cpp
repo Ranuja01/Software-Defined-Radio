@@ -1,13 +1,14 @@
 
-
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <vector>
+#include <cmath>
+#include <cstring>
+#include <algorithm>
+#include <vector>
 #include "PLL.h"
-/*
-float integrator = 0;
-float phaseEst = 0;
-float feedbackI = 1.0;
-float feedbackQ = 0.0;
-float phaseadjust = 0.0;
-*/
+
 void fmPLL(std::vector <float>&pllOut, std::vector <float> &pllIn, float freq, float Fs, float ncoScale, float phaseAdjust, float normBandwidth,std::vector <float> &pllVariables ){
 
     /*

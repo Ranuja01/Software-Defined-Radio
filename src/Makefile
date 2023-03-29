@@ -5,7 +5,7 @@ CFLAGS = -c -Wall -O3
 # CFLAGS = -c
 LDFLAGS =
 INCLUDE = -I../include/
-SOURCES = project.cpp iofunc.cpp filter.cpp  fourier.cpp  genfunc.cpp  logfunc.cpp
+SOURCES =  filter.cpp iofunc.cpp PLL.cpp project.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 EXECUTABLE = project
 

@@ -1,28 +1,14 @@
-/*
-Comp Eng 3DY4 (Computer Systems Integration Project)
-
-Department of Electrical and Computer Engineering
-McMaster University
-Ontario, Canada
-*/
-
 #ifndef DY4_IOFUNC_H
 #define DY4_IOFUNC_H
 
-// add headers as needed
 #include <iostream>
 #include <iomanip>
 #include <fstream>
 #include <vector>
-#include <complex>
 
-// declaration of a function prototypes
-void printRealVector(const std::vector<float> &);
-
-void printComplexVector(const std::vector<std::complex<float>> &);
-
-void readBinData(const std::string, std::vector<float> &);
-
-void writeBinData(const std::string, const std::vector<float> &);
+//void write_stereo_data(std::vector<float>& , float, std::vector<short int>&);
+void write_stereo_data(std::vector<float> &audio, float audio_Fs, std::vector<short int> &play);
+void read_audio_data(const std::string in_fname, std::vector<uint8_t> &audio_data);
+void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<short int> &play);
 
 #endif // DY4_IOFUNC_H
