@@ -147,6 +147,7 @@ void mono(std::vector<float> &audio_data_final)
 
   std::vector<float> allPass_coeff;
 
+//unsigned short int d_taps = 74;
 	impulseResponseLPF(48000,20000, 75, allPass_coeff);
 
 // MAYBE WE NEED HANN WINDOW
@@ -227,10 +228,10 @@ void mono(std::vector<float> &audio_data_final)
     //  std::cout <<"mono: " << audio_block[i] << std::endl;
 
     }
-  //  std::vector<float> audio_block_df((demodulatedSignal.size()/audio_decim), 0);
-  //  blockConvolve(allPass_coeff, audio_block, allPass_State, audio_taps, audio_block_filtered);
+    std::vector<float> audio_block_df((demodulatedSignal.size()/audio_decim), 0);
+    blockConvolve(allPass_coeff, audio_block, allPass_State, audio_taps, audio_block_filtered);
   //  blockConvolve(allPass_coeff, audio_block_filtered, allPass_State, audio_taps, audio_block_df);
-    audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
+    audio_data_final.insert(audio_data_final.end(), audio_block_filtered.begin(), audio_block_filtered.end() );
     //audio_data_final.insert(audio_data_final.end(), audio_block.begin(), audio_block.end() );
 
     blockCount += 1;
@@ -244,7 +245,7 @@ int main()
 
   const std::string out_fname = "fmMonoBlock(cpp).wav";
   std::ofstream fdout(out_fname, std::ios::out | std::ios::binary);
-  	std::vector <short int> play (stereo_data_final.size(), 0);
+  //	std::vector <short int> play (stereo_data_final.size(), 0);
   // Read file
 
 	// assume the wavio.py script was run beforehand to produce a binary file
@@ -495,11 +496,9 @@ int main()
 //    stereo_data_final.insert(stereo_data_final.end(), stereo.begin(), stereo.end() );
 
 
-  	write_stereo_data(stereo_data_final, audio_Fs/2, play);
-
+  	write_stereo_data(stereo, audio_Fs/2);
+  //  write_audio_data(mono_block_filtered, audio_Fs/2);
   	//write to file and play in terminal
-
-    fwrite(&play[0], sizeof(short int), play.size(), stdout);
 
 		blockCount += 1;
   }
