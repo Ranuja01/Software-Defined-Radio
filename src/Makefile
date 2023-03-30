@@ -1,7 +1,7 @@
 # this makefile is intended for g++ on Linux
 
 CC = g++
-CFLAGS = -c -Wall -O3
+CFLAGS = -c -Wall -O3 -mcpu=cortex-a72+crypto
 # CFLAGS = -c
 LDFLAGS =
 INCLUDE = -I../include/
