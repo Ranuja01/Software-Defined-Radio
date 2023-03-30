@@ -358,7 +358,8 @@ void write_stereo_data(std::vector<float> &audio, float audio_Fs, std::vector<sh
 //std::thread rf_thread(rfThread,std::ref(rf_taps), std::ref(rf_decim),std::ref(blockSize),std::ref(audio_data), std::ref(demod_Q));
 void rfThread(std::vector<float> &rf_coeff, unsigned short int &rf_taps, unsigned short int &rf_decim, int &blockSize, std::vector<float> &audio_data,std::queue<float> &demod_Q){
 
-  //std::cout <<"Processing block: " << blockCount << std::endl;
+
+//  std::cout <<"AAA "<< std::endl;
   int blockCount = 0;
   std::vector<float> state_i(rf_taps - 1,0);
   std::vector<float> state_q(rf_taps - 1,0);
@@ -370,12 +371,13 @@ void rfThread(std::vector<float> &rf_coeff, unsigned short int &rf_taps, unsigne
   std::vector<float> filtered_i((blockSize/(2 * rf_decim)), 0);
 	std::vector<float> filtered_q((blockSize/(2 * rf_decim)), 0);
   std::vector<float> block;
-
+  //std::cout <<"BBB "<< std::endl;
   unsigned short int startIndex_i = 0;
 	unsigned short int startIndex_q = 0;
 
   while ((blockCount + 1) * blockSize < audio_data.size()){
     // Processing IQ samples to acquire them within 100khz range
+    std::cout <<"RF block: " << blockCount << std::endl;
 
     std::fill (filtered_i.begin(),filtered_i.end(),0);
     makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
@@ -391,6 +393,7 @@ void rfThread(std::vector<float> &rf_coeff, unsigned short int &rf_taps, unsigne
 
 
     for (int i = 0; i < demodulatedSignal.size(); i++){
+      std::cout <<"dmSignal " << demodulatedSignal[i] << std::endl;
       demod_Q.push(demodulatedSignal[i]);
     }
     blockCount++;
@@ -400,70 +403,90 @@ void rfThread(std::vector<float> &rf_coeff, unsigned short int &rf_taps, unsigne
 
 //std::thread audio_thread(audioThread,std::ref(stereo_extraction_coeff),std::ref(carrier_coeff), std::ref(mono_extraction_coeff), std::ref(allPass_coeff),std::ref(stereo_coeff),std::ref(audio_taps), std::ref(rf_decim), std::ref(audio_decim), std::ref(audio_upSample),blockSize,std::ref(audio_data), std::ref(demod_Q),std::ref(stereo_data_final));
 void audioThread(std::vector<float> &stereo_extraction_coeff, std::vector<float> &carrier_coeff, std::vector<float> &mono_extraction_coeff, std::vector<float> &allPass_coeff, std::vector<float> &stereo_coeff , unsigned short int &audio_taps, unsigned short int &rf_decim, unsigned short int &audio_decim, unsigned short int &audio_upSample, int &blockSize, std::vector<float> &audio_data, std::queue<float> &demod_Q, std::vector<float> &stereo_data_final){
-
+//std::cout <<"zzzzz "<< std::endl;
   std::vector<float> pll_variables(5,0);
-
+//  std::cout <<"CLKIJHRWCCC "<< std::endl;
 	pll_variables[0] = 0;
 	pll_variables[1] = 0;
 	pll_variables[2] = 1;
 	pll_variables[3] = 0;
 	pll_variables[4] = 0;
+  //std::cout <<"DDDD "<< std::endl;
 
 	float freq = 19000;
 	float fs = 48000;
 	float phaseadjust = 0.0;
 
+//  std::cout <<"aaaa "<< std::endl;
 	float normBandwidth = 0.01;
   float trigOffset = 0.0;
   float ncoScale = 2.0;
   int blockCount = 0;
 
   std::vector<float> stereo_state(audio_taps - 1, 0);
+//  std::cout <<"GGGG "<< std::endl;
   std::vector<float> state_pll(audio_taps - 1,0);
+//  std::cout <<"HHHH "<< std::endl;
 
 	unsigned short int startIndex_stereo = 0;
   unsigned short int startIndex_pll = 0;
 
   std::vector<float> stereo_extraction_state(audio_taps - 1,0);
+//  std::cout <<"IIII "<< std::endl;
 
   std::vector<float> mono_extraction_state(audio_taps - 1,0);
 
   unsigned short int allPass_taps = 75;
   unsigned short int startIndex_mono = 0;
+//  std::cout <<"JJJJ "<< std::endl;
 
   std::vector<float> allPass_State(allPass_taps - 1,0);
+//  std::cout <<"KKKK "<< std::endl;
 
 
-
-  std::vector<float> demodulatedSignal ((blockSize/(2 * rf_decim),0));
+  std::vector<float> demodulatedSignal (blockSize/(2 * rf_decim),0);
+//  std::cout <<"ppppppppppppppppppppppp "<< demodulatedSignal.size() <<  std::endl;
+//  std::cout <<"LLLL "<< std::endl;
 
   while ((blockCount + 1) * blockSize < audio_data.size()){
-
-
+    std::cout <<"Audio block: " << blockCount << std::endl;
+//    std::cout <<"dddd123 "<< demodulatedSignal.size() <<  std::endl;
     for (int i = 0; i < demodulatedSignal.size(); i++){
       demodulatedSignal[i] = demod_Q.front();
       demod_Q.pop();
+
     }
 
 		std::vector<float> stereo_extraction_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
+//    std::cout <<"NNNN "<< std::endl;
 
 		std::vector<float> pll_block(stereo_extraction_block.size(), 0);
+//    std::cout <<"OOOO "<< stereo_extraction_block.size() <<  std::endl;
+//    std::cout <<"OOOO1 "<< pll_block.size() <<  std::endl;
+//    std::cout <<"OOOO2 "<< stereo_extraction_state.size() <<  std::endl;
+//    std::cout <<"OOOO3 "<< demodulatedSignal.size() <<  std::endl;
+//    std::cout <<"OOOO4 "<<blockSize/(2 * rf_decim) <<  std::endl;
+
 
     if (audio_upSample == 1){
       blockProcessing(stereo_extraction_coeff, demodulatedSignal, stereo_extraction_state, audio_taps, stereo_extraction_block,startIndex_stereo, audio_decim);
+//      std::cout <<"POIJHNJH "<< std::endl;
       blockProcessing(carrier_coeff, demodulatedSignal, state_pll, audio_taps, pll_block,startIndex_pll, audio_decim);
+//      std::cout <<"PPPP "<< std::endl;
     }else{
       blockResample(stereo_extraction_coeff, demodulatedSignal, stereo_extraction_state, audio_taps, stereo_extraction_block,audio_decim,audio_upSample);
       blockResample(carrier_coeff, demodulatedSignal, state_pll, audio_taps, pll_block, audio_decim,audio_upSample);
+//      std::cout <<"QQQQ "<< std::endl;
     }
     std::vector<float> mono_extraction_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
 
     if (audio_upSample == 1){
       blockProcessing(mono_extraction_coeff, demodulatedSignal, mono_extraction_state, audio_taps, mono_extraction_block,startIndex_mono, audio_decim);
-
+//      std::cout <<"RRRR "<< std::endl;
 		}else{
       blockResample(mono_extraction_coeff, demodulatedSignal, mono_extraction_state, audio_taps, mono_extraction_block,audio_decim,audio_upSample);
-		}
+//      std::cout <<"SSSS "<< std::endl;
+    }
 
     std::vector<float> mono_block_filtered((demodulatedSignal.size()/audio_decim), 0);
 
@@ -494,6 +517,13 @@ void audioThread(std::vector<float> &stereo_extraction_coeff, std::vector<float>
   		stereo[2*i] = stereoLeft[i];
   		stereo[2*i+1] = stereoRight[i];
   	}
+
+    for (int i = 0; i < 15; i++){
+
+
+      std::cout <<"stereo: " << pll_processed[i] << std::endl;
+
+    }
 
     stereo_data_final.insert(stereo_data_final.end(), stereo.begin(), stereo.end() );
 
@@ -634,22 +664,26 @@ int main()
   // End Mono Specific Variables
 
   std::queue<float> demod_Q;
-
+  std::cout <<"CCCC "<< std::endl;
   std::thread rf_thread(rfThread,std::ref(rf_coeff),std::ref(rf_taps), std::ref(rf_decim),std::ref(blockSize),std::ref(audio_data), std::ref(demod_Q));
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  std::cout <<"DDD "<< std::endl;
   std::thread audio_thread(audioThread,std::ref(stereo_extraction_coeff),std::ref(carrier_coeff), std::ref(mono_extraction_coeff), std::ref(allPass_coeff),std::ref(stereo_coeff),std::ref(audio_taps), std::ref(rf_decim), std::ref(audio_decim), std::ref(audio_upSample),std::ref(blockSize),std::ref(audio_data), std::ref(demod_Q),std::ref(stereo_data_final));
 
   rf_thread.join();
+//  std::cout <<"EEE "<< std::endl;
   // Pause for 1 second
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-  audio_thread.join();
 
-/*
-  for (int i = 0; i < 15; i++){
+  audio_thread.join();
+//  std::cout <<"FFFF "<< std::endl;
+
+
+  for (int i = 0; i < 150; i++){
 
 
     std::cout <<"stereo final: " << stereo_data_final[i] << std::endl;
 
-  }*/
+  }
 	//g++ (filename).cpp -o (file)
 	//     ./test | aplay -c 2 -f S16_LE -r 48000
 
