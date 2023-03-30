@@ -12,6 +12,12 @@ Ontario, Canada
 #include <fstream>
 #include <vector>
 #include <cmath>
+#include <thread>
+#include <queue>
+#include <chrono>
+
+
+
 
 #include "PLL.cpp"
 //#include "MonoBlock.cpp"
@@ -349,6 +355,158 @@ void write_stereo_data(std::vector<float> &audio, float audio_Fs, std::vector<sh
   play.insert(play.end(), sample.begin(), sample.end());
 }
 
+//std::thread rf_thread(rfThread,std::ref(rf_taps), std::ref(rf_decim),std::ref(blockSize),std::ref(audio_data), std::ref(demod_Q));
+void rfThread(std::vector<float> &rf_coeff, unsigned short int &rf_taps, unsigned short int &rf_decim, int &blockSize, std::vector<float> &audio_data,std::queue<float> &demod_Q){
+
+  //std::cout <<"Processing block: " << blockCount << std::endl;
+  int blockCount = 0;
+  std::vector<float> state_i(rf_taps - 1,0);
+  std::vector<float> state_q(rf_taps - 1,0);
+
+
+  float prevI = 0;
+  float prevQ = 0;
+
+  std::vector<float> filtered_i((blockSize/(2 * rf_decim)), 0);
+	std::vector<float> filtered_q((blockSize/(2 * rf_decim)), 0);
+  std::vector<float> block;
+
+  unsigned short int startIndex_i = 0;
+	unsigned short int startIndex_q = 0;
+
+  while ((blockCount + 1) * blockSize < audio_data.size()){
+    // Processing IQ samples to acquire them within 100khz range
+
+    std::fill (filtered_i.begin(),filtered_i.end(),0);
+    makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
+    blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
+
+    std::fill (filtered_q.begin(),filtered_q.end(),0);
+    makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
+    blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
+
+    // Demodulating to merge IQ samples
+    std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
+    fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
+
+
+    for (int i = 0; i < demodulatedSignal.size(); i++){
+      demod_Q.push(demodulatedSignal[i]);
+    }
+    blockCount++;
+  }
+
+}
+
+//std::thread audio_thread(audioThread,std::ref(stereo_extraction_coeff),std::ref(carrier_coeff), std::ref(mono_extraction_coeff), std::ref(allPass_coeff),std::ref(stereo_coeff),std::ref(audio_taps), std::ref(rf_decim), std::ref(audio_decim), std::ref(audio_upSample),blockSize,std::ref(audio_data), std::ref(demod_Q),std::ref(stereo_data_final));
+void audioThread(std::vector<float> &stereo_extraction_coeff, std::vector<float> &carrier_coeff, std::vector<float> &mono_extraction_coeff, std::vector<float> &allPass_coeff, std::vector<float> &stereo_coeff , unsigned short int &audio_taps, unsigned short int &rf_decim, unsigned short int &audio_decim, unsigned short int &audio_upSample, int &blockSize, std::vector<float> &audio_data, std::queue<float> &demod_Q, std::vector<float> &stereo_data_final){
+
+  std::vector<float> pll_variables(5,0);
+
+	pll_variables[0] = 0;
+	pll_variables[1] = 0;
+	pll_variables[2] = 1;
+	pll_variables[3] = 0;
+	pll_variables[4] = 0;
+
+	float freq = 19000;
+	float fs = 48000;
+	float phaseadjust = 0.0;
+
+	float normBandwidth = 0.01;
+  float trigOffset = 0.0;
+  float ncoScale = 2.0;
+  int blockCount = 0;
+
+  std::vector<float> stereo_state(audio_taps - 1, 0);
+  std::vector<float> state_pll(audio_taps - 1,0);
+
+	unsigned short int startIndex_stereo = 0;
+  unsigned short int startIndex_pll = 0;
+
+  std::vector<float> stereo_extraction_state(audio_taps - 1,0);
+
+  std::vector<float> mono_extraction_state(audio_taps - 1,0);
+
+  unsigned short int allPass_taps = 75;
+  unsigned short int startIndex_mono = 0;
+
+  std::vector<float> allPass_State(allPass_taps - 1,0);
+
+
+
+  std::vector<float> demodulatedSignal ((blockSize/(2 * rf_decim),0));
+
+  while ((blockCount + 1) * blockSize < audio_data.size()){
+
+
+    for (int i = 0; i < demodulatedSignal.size(); i++){
+      demodulatedSignal[i] = demod_Q.front();
+      demod_Q.pop();
+    }
+
+		std::vector<float> stereo_extraction_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
+
+		std::vector<float> pll_block(stereo_extraction_block.size(), 0);
+
+    if (audio_upSample == 1){
+      blockProcessing(stereo_extraction_coeff, demodulatedSignal, stereo_extraction_state, audio_taps, stereo_extraction_block,startIndex_stereo, audio_decim);
+      blockProcessing(carrier_coeff, demodulatedSignal, state_pll, audio_taps, pll_block,startIndex_pll, audio_decim);
+    }else{
+      blockResample(stereo_extraction_coeff, demodulatedSignal, stereo_extraction_state, audio_taps, stereo_extraction_block,audio_decim,audio_upSample);
+      blockResample(carrier_coeff, demodulatedSignal, state_pll, audio_taps, pll_block, audio_decim,audio_upSample);
+    }
+    std::vector<float> mono_extraction_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
+
+    if (audio_upSample == 1){
+      blockProcessing(mono_extraction_coeff, demodulatedSignal, mono_extraction_state, audio_taps, mono_extraction_block,startIndex_mono, audio_decim);
+
+		}else{
+      blockResample(mono_extraction_coeff, demodulatedSignal, mono_extraction_state, audio_taps, mono_extraction_block,audio_decim,audio_upSample);
+		}
+
+    std::vector<float> mono_block_filtered((demodulatedSignal.size()/audio_decim), 0);
+
+    blockConvolve(allPass_coeff, mono_extraction_block, allPass_State, audio_taps, mono_block_filtered);
+
+		std::vector<float> pll_processed ((pll_block.size()),0);
+
+    fmPLL(pll_processed, pll_block, freq, fs, ncoScale, phaseadjust, normBandwidth,pll_variables);
+
+		std::vector<float> stereo_block ((pll_processed.size()),0);
+    std::vector<float> filtered_stereo ((pll_processed.size()),0);
+
+		for (int i = 0; i < pll_block.size(); i++){
+	    stereo_block [i] = stereo_extraction_block[i] * pll_processed[i];
+	  }
+
+		blockConvolve(stereo_coeff, stereo_block, stereo_state, audio_taps, filtered_stereo);
+
+    std::vector<float> stereoLeft ((filtered_stereo.size()),0);
+  	std::vector<float> stereoRight ((filtered_stereo.size()),0);
+  	std::vector<float> stereo ((filtered_stereo.size()*2),0);
+  //  std::cout <<"sdfghj block: " << blockCount << std::endl;
+    for (int i = 0; i < stereoLeft.size(); i++){
+      //std::cout <<"lll block: " << blockCount << std::endl;
+      stereoLeft [i] = (filtered_stereo[i] + mono_block_filtered[i])/2;
+      stereoRight [i] = (mono_block_filtered[i] - filtered_stereo[i])/2;
+
+  		stereo[2*i] = stereoLeft[i];
+  		stereo[2*i+1] = stereoRight[i];
+  	}
+
+    stereo_data_final.insert(stereo_data_final.end(), stereo.begin(), stereo.end() );
+
+
+
+		blockCount += 1;
+  }
+
+}
+
+
+
+
 
 int main()
 {
@@ -385,21 +543,6 @@ int main()
   float carrier_Fe = 19500.0;
 
   //variables for PLL block process
-	std::vector<float> pll_variables(5,0);
-
-	pll_variables[0] = 0;
-	pll_variables[1] = 0;
-	pll_variables[2] = 1;
-	pll_variables[3] = 0;
-	pll_variables[4] = 0;
-
-	float freq = 19000;
-	float fs = 48000;
-	float phaseadjust = 0.0;
-
-	float normBandwidth = 0.01;
-  float trigOffset = 0.0;
-  float ncoScale = 2.0;
 
   unsigned short int rf_upSample = 1;
   unsigned short int rf_taps = 151;
@@ -459,26 +602,9 @@ int main()
 
 	// impulse response (reuse code from the previous experiment)
 	std::vector<float> rf_coeff;
-	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_coeff);
-
-  std::vector<float> state_i(rf_taps - 1,0);
-  std::vector<float> state_q(rf_taps - 1,0);
-
-
-  float prevI = 0;
-  float prevQ = 0;
-
-  std::vector<float> filtered_i((blockSize/(2 * rf_decim)), 0);
-	std::vector<float> filtered_q((blockSize/(2 * rf_decim)), 0);
-  std::vector<float> block;
-
-  unsigned short int startIndex_i = 0;
-	unsigned short int startIndex_q = 0;
-
 
   // Stereo Specific Variables
 
-  std::vector<float> stereo_extraction_state(audio_taps - 1,0);
 
   std::vector<float> stereo_extraction_coeff;
 	impulseResponseBPF(audio_Fs, audio_Fb, audio_Fe, audio_taps, stereo_extraction_coeff);
@@ -488,16 +614,6 @@ int main()
 
 	std::vector<float> stereo_coeff;
 	impulseResponseLPF(48000, 19000, audio_taps, stereo_coeff);
-
-	std::vector<float> stereo_state(audio_taps - 1, 0);
-  std::vector<float> state_pll(audio_taps - 1,0);
-  std::vector<float> stereo_data_final;
-
-	unsigned short int startIndex_stereo = 0;
-  unsigned short int startIndex_pll = 0;
-
-  std::vector<float> pll_block(filtered_i.size(), 0);
-  std::vector<float> pll;
 
   // End stereo specific
 
@@ -514,99 +630,19 @@ int main()
   unsigned short int startIndex_mono = 0;
 
   std::vector<float> allPass_State(allPass_taps - 1,0);
+  std::vector<float> stereo_data_final;
   // End Mono Specific Variables
 
+  std::queue<float> demod_Q;
 
-  while ((blockCount + 1) * blockSize < audio_data.size()){
+  std::thread rf_thread(rfThread,std::ref(rf_coeff),std::ref(rf_taps), std::ref(rf_decim),std::ref(blockSize),std::ref(audio_data), std::ref(demod_Q));
+  std::thread audio_thread(audioThread,std::ref(stereo_extraction_coeff),std::ref(carrier_coeff), std::ref(mono_extraction_coeff), std::ref(allPass_coeff),std::ref(stereo_coeff),std::ref(audio_taps), std::ref(rf_decim), std::ref(audio_decim), std::ref(audio_upSample),std::ref(blockSize),std::ref(audio_data), std::ref(demod_Q),std::ref(stereo_data_final));
 
-    //std::cout <<"Processing block: " << blockCount << std::endl;
+  rf_thread.join();
+  // Pause for 1 second
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  audio_thread.join();
 
-    // Processing IQ samples to acquire them within 100khz range
-    std::fill (filtered_i.begin(),filtered_i.end(),0);
-    makeOddEvenSubList(block,audio_data,blockCount*blockSize,(blockCount + 1)*blockSize);
-
-    blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
-
-    std::fill (filtered_q.begin(),filtered_q.end(),0);
-    makeOddEvenSubList(block,audio_data,blockCount*blockSize + 1,(blockCount + 1)*blockSize);
-    blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
-
-    // Demodulating to merge IQ samples
-		std::vector<float> demodulatedSignal ((int)(filtered_i.size()),0);
-		fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
-
-		std::vector<float> stereo_extraction_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
-
-		std::vector<float> pll_block(stereo_extraction_block.size(), 0);
-
-    if (audio_upSample == 1){
-      blockProcessing(stereo_extraction_coeff, demodulatedSignal, stereo_extraction_state, audio_taps, stereo_extraction_block,startIndex_stereo, audio_decim);
-      blockProcessing(carrier_coeff, demodulatedSignal, state_pll, audio_taps, pll_block,startIndex_pll, audio_decim);
-    }else{
-      blockResample(stereo_extraction_coeff, demodulatedSignal, stereo_extraction_state, audio_taps, stereo_extraction_block,audio_decim,audio_upSample);
-      blockResample(carrier_coeff, demodulatedSignal, state_pll, audio_taps, pll_block, audio_decim,audio_upSample);
-    }
-
-
-    std::vector<float> mono_extraction_block((demodulatedSignal.size()/audio_decim)*audio_upSample, 0);
-
-
-    if (audio_upSample == 1){
-      blockProcessing(mono_extraction_coeff, demodulatedSignal, mono_extraction_state, audio_taps, mono_extraction_block,startIndex_mono, audio_decim);
-
-		}else{
-      blockResample(mono_extraction_coeff, demodulatedSignal, mono_extraction_state, audio_taps, mono_extraction_block,audio_decim,audio_upSample);
-		}
-    std::vector<float> mono_block_filtered((demodulatedSignal.size()/audio_decim), 0);
-
-    blockConvolve(allPass_coeff, mono_extraction_block, allPass_State, audio_taps, mono_block_filtered);
-
-		std::vector<float> pll_processed ((pll_block.size()),0);
-
-    fmPLL(pll_processed, pll_block, freq, fs, ncoScale, phaseadjust, normBandwidth,pll_variables);
-
-		std::vector<float> stereo_block ((pll_processed.size()),0);
-    std::vector<float> filtered_stereo ((pll_processed.size()),0);
-
-		for (int i = 0; i < pll_block.size(); i++){
-	    stereo_block [i] = stereo_extraction_block[i] * pll_processed[i];
-	  }
-
-		blockConvolve(stereo_coeff, stereo_block, stereo_state, audio_taps, filtered_stereo);
-
-    std::vector<float> stereoLeft ((filtered_stereo.size()),0);
-  	std::vector<float> stereoRight ((filtered_stereo.size()),0);
-  	std::vector<float> stereo ((filtered_stereo.size()*2),0);
-  //  std::cout <<"sdfghj block: " << blockCount << std::endl;
-    for (int i = 0; i < stereoLeft.size(); i++){
-      //std::cout <<"lll block: " << blockCount << std::endl;
-      stereoLeft [i] = (filtered_stereo[i] + mono_block_filtered[i])/2;
-      stereoRight [i] = (mono_block_filtered[i] - filtered_stereo[i])/2;
-
-  		stereo[2*i] = stereoLeft[i];
-  		stereo[2*i+1] = stereoRight[i];
-  	}
-/*
-    for (int i = 0; i < 15; i++){
-
-
-      std::cout <<"left: " << stereoLeft[i] << std::endl;
-
-    }
-
-    for (int i = 0; i < 15; i++){
-
-
-      std::cout <<"right: " << stereoRight[i] << std::endl;
-
-    }*/
-    //std::cout <<"poiuytr block: " << blockCount << std::endl;
-    stereo_data_final.insert(stereo_data_final.end(), stereo.begin(), stereo.end() );
-
-
-
-		blockCount += 1;
-  }
 /*
   for (int i = 0; i < 15; i++){
 
@@ -615,7 +651,7 @@ int main()
 
   }*/
 	//g++ (filename).cpp -o (file)
-	//     ./(file) | aplay -c 2 -f S16_LE -r 48000
+	//     ./test | aplay -c 2 -f S16_LE -r 48000
 
 //	std::vector<float> monoSignal;
 //	mono(monoSignal);
