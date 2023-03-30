@@ -6,7 +6,7 @@
 #include <vector>
 #include <complex>
 #include <cmath>
-void write_stereo_data(std::vector<float> &audio, float audio_Fs, std::vector<short int> &play)
+void write_stereo_data(std::vector<float> &audio, float audio_Fs)
 {
 
   //block process writing to file
@@ -17,7 +17,9 @@ void write_stereo_data(std::vector<float> &audio, float audio_Fs, std::vector<sh
     else sample[k] = static_cast<short int>(audio[k]*16384);
   }
   //append each block
-  play.insert(play.end(), sample.begin(), sample.end());
+  //play.insert(play.end(), sample.begin(), sample.end());
+      fwrite(&sample[0], sizeof(short int), sample.size(), stdout);
+
 }
 
 void read_audio_data(const std::string in_fname, std::vector<uint8_t> &audio_data)
@@ -54,7 +56,7 @@ void read_audio_data(const std::string in_fname, std::vector<uint8_t> &audio_dat
 // and then reformat them to .wav files to be run on third-party players
 
 
-void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<short int> &play)
+void write_audio_data(std::vector<float> &audio, float audio_Fs)
 {
 
   //block process writing to file
@@ -65,5 +67,6 @@ void write_audio_data(std::vector<float> &audio, float audio_Fs, std::vector<sho
     else sample[k] = static_cast<short int>(audio[k]*16384);
   }
   //append each block
-  play.insert(play.end(), sample.begin(), sample.end());
+//  play.insert(play.end(), sample.begin(), sample.end());
+        fwrite(&sample[0], sizeof(short int), sample.size(), stdout);
 }
