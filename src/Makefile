@@ -1,11 +1,11 @@
 # this makefile is intended for g++ on Linux
 
 CC = g++
-CFLAGS = -c -Wall -O3 -mcpu=cortex-a72+crypto
+CFLAGS = -c -Wall -O3 -mcpu=cortex-a72+crypto -pthread
 # CFLAGS = -c
-LDFLAGS =
+LDFLAGS = -pthread
 INCLUDE = -I../include/
-SOURCES =  filter.cpp iofunc.cpp PLL.cpp project.cpp
+SOURCES =  filter.cpp iofunc.cpp PLL.cpp multiProject.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 EXECUTABLE = project
 
