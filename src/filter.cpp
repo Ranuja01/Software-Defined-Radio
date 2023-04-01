@@ -186,7 +186,7 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
   }
 }
 
-void impulseResponseBPF(float Fs, float Fb, float Fe, unsigned short int num_taps, std::vector<float> &h)
+void impulseResponseBPF(float Fs, float Fb, float Fe, unsigned short int num_taps, std::vector<float> &h,const int &gain)
 {
 	// allocate memory for the impulse response
 	h.clear(); h.resize(num_taps, 0.0);
@@ -207,7 +207,7 @@ void impulseResponseBPF(float Fs, float Fb, float Fe, unsigned short int num_tap
 			h[i] = norm_pass * sin (PI * norm_pass * (i - (num_taps - 1)/2)) / (PI * norm_pass * (i - (num_taps - 1)/2));
 		}
     h[i] *= cos(i*PI*norm_center);
-		h[i] *= pow(sin(PI * i / num_taps),2);
+		h[i] *= pow(sin(PI * i / num_taps),2) * gain;
 
 	}
 }
