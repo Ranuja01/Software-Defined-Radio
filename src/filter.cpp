@@ -230,7 +230,7 @@ void impulseResponseRootRaisedCosine(float Fs, unsigned short int num_taps, std:
 void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
 {
 
-  // allocate memory for the output (filtered) data
+  // allocates memory for the output (filtered) data
   y.clear(); y.resize(x.size()+h.size()-1, 0.0); // resizes output vector
   for (int n = 0; n < y.size(); n++){
     for (int k = 0; k < h.size(); k++){
