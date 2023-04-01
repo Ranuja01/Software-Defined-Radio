@@ -26,7 +26,7 @@ void blockConvolve(std::vector<float> &h, const std::vector<float> &block, std::
 
   for (int n = 0; n < block.size(); n++){
 		for (int k = 0; k < h.size(); k++){
-			if (n - k >=0){ .
+			if (n - k >=0){
 				if (n - k < block.size()){
 					filtered_block[n] += h[k] * block[n-k]; //convolution over block samples
 				}
@@ -217,9 +217,7 @@ void impulseResponseRootRaisedCosine(float Fs, unsigned short int num_taps, std:
           (sin(PI/(4*beta)))) + ((1-2/PI)*(cos(PI/(4*beta)))));
         }
 
-    else{ h[i] = (sin(PI*t*(1-beta)/T_symbol) +  \  //all other cases
-          4*beta*(t/T_symbol)*cos(PI*t*(1+beta)/T_symbol))/ \
-          (PI*t*(1-(4*beta*t/T_symbol)*(4*beta*t/T_symbol))/T_symbol);
+    else{ h[i] = (sin(PI*t*(1-beta)/T_symbol) + 4*beta*(t/T_symbol)*cos(PI*t*(1+beta)/T_symbol))/(PI*t*(1-(4*beta*t/T_symbol)*(4*beta*t/T_symbol))/T_symbol);
         }
   }
   // returns the RRC impulse response to be used by convolution
