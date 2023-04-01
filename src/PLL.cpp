@@ -23,6 +23,8 @@ void fmPLL(std::vector <float>&pllOut, std::vector <float> &pllIn, float freq, f
 
  ncoScale		float
                                  frequency scale factor for the NCO output
+                                 = 2 for stereo pll
+                                 = 0.5 for rds pll
 
  phaseAdjust		float
                                  phase adjust to be added to the NCO output only
@@ -52,14 +54,12 @@ void fmPLL(std::vector <float>&pllOut, std::vector <float> &pllIn, float freq, f
   std::vector <float> ncoOut(pllIn.size()+1, 0);
 
   	// initialize internal state
-
-    //before block process, initialize the pointers below to 0
+    //before block process, the pointers below were initialized to 0
     //float integrator = 0.0
   	//float phaseEst = 0.0
   	//float feedbackI = 1.0
   	//float feedbackQ = 0.0
-
-  	//float trigOffset = 0
+    //float trigOffset = 0
 
     ncoOut[0] = 1.0;
   	// note: state saving will be needed for block processing
@@ -73,59 +73,40 @@ void fmPLL(std::vector <float>&pllOut, std::vector <float> &pllIn, float freq, f
 
     //float integ = 0;
     /*
-    float integrator = 0;
-    float phaseEst = 0;
-    float feedbackI = 1.0;
-    float feedbackQ = 0.0;
-    float phaseadjust = 0.0;
+    pllVariables[i] to state save for next block
+    i = 0, float integrator = 0;
+    i = 1, float phaseEst = 0;
+    i = 2, float feedbackI = 1.0;
+    i = 3, float feedbackQ = 0.0;
+    i = 4, float trigOffset = 0.0;
     */
 
-    for(int i=0; i<pllVariables.size(); i++){
-      //  std::cout << i << "asdasd: " << pllVariables[i] << std::endl;
-    }
-
     for(int i=0; i<pllIn.size(); i++){
-      //std::cout << "3: " << integrator << std::endl;
       // phase detector
   		errorI = pllIn[i] * (pllVariables[2]);  // complex conjugate of the
   		errorQ = pllIn[i] * (-1.0*(pllVariables[3]));  // feedback complex exponential
 
       // four-quadrant arctangent discriminator for phase error detection
+      //account for divide by 0
       if (errorI == 0){
         errorD = 2*atan(1);
       }else{
   		    errorD = atan(errorQ/errorI);
       }
-  		//loop filter
-      //integrator = integ;
-
 
       pllVariables[0] += Ki*errorD;
 
-      //pllIn[0] += errorD;
   		// update phase estimate
       pllVariables[1] +=  Kp*errorD + pllVariables[0];
-  		//*phaseEst = *phaseEst + Kp*errorD + *integrator;
-/*
-      std::cout << "1: " << pllIn[0] << std::endl;
-      std::cout << "2: " << errorQ << std::endl;
-      std::cout << "3: " << pllVariables[0] << std::endl;
-      std::cout << "4: " << pllVariables[1]<< std::endl;
-      std::cout << "5: " << Ki*errorD << std::endl;*/
+
   		// internal oscillator
-      //std::cout << "fdes: " << pllIn[1024] << std::endl;
+
   		pllVariables[4] += 1;
   		trigArg = 2*pi*(freq/Fs)*(pllVariables[4]);
-  		pllVariables[2] = cos(trigArg);
-  		pllVariables[3] = sin(trigArg);
+  		pllVariables[2] = cos(trigArg); //in phase
+  		pllVariables[3] = sin(trigArg); //quartature
   		ncoOut[i+1] = cos(trigArg*ncoScale + pllVariables[1] + phaseAdjust);
 
-  	// for stereo only the in-phase NCO component should be returned
-  	// for block processing you should also return the state
-  	//return ncoOut
-  	//for RDS add also the quadrature NCO component to the output
-    //std::cout<< "d:   " << ncoOut[i+1] << std::endl;
     }
     pllOut = ncoOut;
-    //PLLwave.insert(PLLwave.end(), ncoOut.begin(), ncoOut.end());
-}
+  }
