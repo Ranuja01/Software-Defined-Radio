@@ -56,7 +56,7 @@ void rfThread(std::vector<float> &rf_coeff, unsigned short int &rf_taps, unsigne
 
   for (unsigned int blockCount =0; ;blockCount++){
     // Processing IQ samples to acquire them within 100khz range
-    std::cout <<"RF block: " << blockCount << std::endl;
+    //std::cout <<"RF block: " << blockCount << std::endl;
 
     readStdinBlockData(blockSize,blockCount,audio_data);
     if (std::cin.rdstate()!=0){
@@ -131,9 +131,9 @@ void audioThread(std::vector<float> &stereo_extraction_coeff, std::vector<float>
   std::vector<float> stereo ((filtered_stereo.size()*2),0);
 
   for (unsigned int blockCount =0; ;blockCount++){
-		std::cout <<"Audio block: " << blockCount << std::endl;
+		//std::cout <<"Audio block: " << blockCount << std::endl;
     if (demod_Q.empty()){
-			std::cout << "kjhygtf: " << std::endl;
+			//std::cout << "kjhygtf: " << std::endl;
       exit(1);
 		}
 std::cout << "AA: " << std::endl;
@@ -143,7 +143,7 @@ std::cout << "AA: " << std::endl;
       demod_Q.pop();
 
     }
-std::cout << "BB: " << std::endl;
+//std::cout << "BB: " << std::endl;
     std::fill (stereo_extraction_block.begin(),stereo_extraction_block.end(),0);
     std::fill (pll_block.begin(),pll_block.end(),0);
 
@@ -212,10 +212,9 @@ std::cout << "BB: " << std::endl;
 
 }
 //std::ref(rds_extraction_coeff),std::ref(rds_pll_coeff), std::ref(RDS_resample_coeff), std::ref(rds_allPass_coeff),std::ref(audio_taps), std::ref(rf_decim),std::ref(blockSize), std::ref(rds_demod_Q), std::ref(audio_Fs)
-void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds_pll_coeff, std::vector<float> &RDS_resample_coeff, std::vector<float> &rds_allPass_coeff, unsigned short int &audio_taps, unsigned short int &rf_decim, int &blockSize, std::queue<float> &rds_demod_Q, float &audio_Fs, unsigned short int &audio_decim, unsigned short int &audio_upSample,int &mode){
+void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds_pll_coeff, std::vector<float> &RDS_resample_coeff, std::vector<float> &rds_allPass_coeff, unsigned short int &audio_taps, unsigned short int &rf_decim, int &blockSize, std::queue<float> &rds_demod_Q, float &audio_Fs, unsigned short int &audio_decim, unsigned short int &audio_upSample,int &mode,std::vector<float> &cosFilt_coeff){
 
 	if (mode == 0 || mode == 2){
-
 
 		std::vector<float> pll_variables(5,0);
 		pll_variables[0] = 0;
@@ -239,6 +238,8 @@ void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds
 		std::vector<float> allPass_State(allPass_taps - 1,0);
 		std::vector<float> rds_extraction_state(audio_taps - 1,0);
 		std::vector<float> RDS_resample_state(audio_taps - 1,0);
+		std::vector<float> cosFilt_state(audio_taps - 1,0);
+
 
 		unsigned short int startIndex_rds = 0;
 
@@ -253,9 +254,8 @@ void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds
 		std::vector<float> pll_processed (pll_block.size(), 0);
 		std::vector<float> RDS_block ((pll_processed.size()),0);
 		std::vector<float> resampled_RDS ((pll_processed.size()/audio_decim)*audio_upSample,0);
+		std::vector<float> RDS_Cos_Filtered ((resampled_RDS.size()),0);
 
-		float rds_sampleRate = 64125;
-		float rds_sampleRate2 = 95000;
 
 		float rds_upSample = 171;
 		float rds_downSample = 640;
@@ -265,7 +265,7 @@ void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds
 		}
 
 		for (unsigned int blockCount =0; ;blockCount++){
-	    std::cout <<"RDS block: " << blockCount << std::endl;
+	  //  std::cout <<"RDS block: " << blockCount << std::endl;
 
 	/*
 	    if (demod_Q.empty())
@@ -311,6 +311,12 @@ void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds
 
 			blockResample(RDS_resample_coeff, RDS_block, RDS_resample_state, audio_taps, resampled_RDS,rds_downSample,rds_upSample);
 
+
+			std::fill (RDS_Cos_Filtered.begin(),RDS_Cos_Filtered.end(),0);
+			blockConvolve(cosFilt_coeff, resampled_RDS, cosFilt_state, audio_taps, RDS_Cos_Filtered);
+
+
+
 	  }
 	}
 }
@@ -352,8 +358,6 @@ int main(int argc, char* argv[])
 	float rds_Fb = 54000.0;
   float rds_Fe = 60000.0;
 
-
-
   //variables for PLL block process
 
   unsigned short int rf_upSample = 1;
@@ -365,6 +369,10 @@ int main(int argc, char* argv[])
   unsigned short int audio_decim = 5;
   float audio_Fc = 16000.0;
   int blockSize = 1024 * rf_decim * audio_decim * 2;
+
+	// RDS
+
+	float rds_sampleFreq = 64125;
 
   if(mode == 0){
     rf_Fs = 2400000.0;
@@ -400,6 +408,7 @@ int main(int argc, char* argv[])
   	audio_taps = 151;
     audio_upSample = 147;
     audio_decim = 800;
+		rds_sampleFreq = 95000;
 
   }else if (mode == 3){
     rf_Fs = 1920000.0;
@@ -458,6 +467,8 @@ int main(int argc, char* argv[])
 	std::vector<float> RDS_resample_coeff;
 	impulseResponseLPF(240000,57000, audio_taps, RDS_resample_coeff,audio_upSample);
 
+	std::vector<float> cosFilt_coeff;
+	impulseResponseRootRaisedCosine(rds_sampleFreq, audio_taps, cosFilt_coeff);
 
 	// End RDS Specific Variables
 
@@ -465,12 +476,11 @@ int main(int argc, char* argv[])
 	std::queue<float> rds_demod_Q;
 
   std::thread rf_thread(rfThread,std::ref(rf_coeff),std::ref(rf_taps), std::ref(rf_decim),std::ref(blockSize), std::ref(demod_Q), std::ref(rds_demod_Q));
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
   std::thread audio_thread(audioThread,std::ref(stereo_extraction_coeff),std::ref(carrier_coeff), std::ref(mono_extraction_coeff), std::ref(allPass_coeff),std::ref(stereo_coeff),std::ref(audio_taps), std::ref(rf_decim), std::ref(audio_decim), std::ref(audio_upSample),std::ref(blockSize), std::ref(demod_Q),std::ref(stereo_data_final), std::ref(audio_Fs));
 
-
-	std::thread rds_thread(rdsThread,std::ref(rds_extraction_coeff),std::ref(rds_pll_coeff), std::ref(RDS_resample_coeff), std::ref(rds_allPass_coeff),std::ref(audio_taps), std::ref(rf_decim),std::ref(blockSize), std::ref(rds_demod_Q), std::ref(audio_Fs),std::ref(audio_decim),std::ref(audio_upSample),std::ref(mode));
+	std::thread rds_thread(rdsThread,std::ref(rds_extraction_coeff),std::ref(rds_pll_coeff), std::ref(RDS_resample_coeff), std::ref(rds_allPass_coeff),std::ref(audio_taps), std::ref(rf_decim),std::ref(blockSize), std::ref(rds_demod_Q), std::ref(audio_Fs),std::ref(audio_decim),std::ref(audio_upSample),std::ref(mode),std::ref(cosFilt_coeff));
 //	void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds_pll_coeff, std::vector<float> &RDS_resample_coeff, std::vector<float> &rds_allPass_coeff, unsigned short int &audio_taps, unsigned short int &rf_decim, int &blockSize, std::queue<float> &rds_demod_Q, std::vector<float> &stereo_data_final, float &audio_Fs)
 
   rf_thread.join();
