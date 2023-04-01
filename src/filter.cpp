@@ -21,6 +21,9 @@ void makeSubList (std::vector<float> &subList, const std::vector<float> &list, i
 
 }
 
+
+
+
 void blockConvolve(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block){
 
   //std::cout << filtered_block.size() << " " << h.size() << "  " << block.size() << std::endl;
@@ -161,7 +164,7 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
 }
 
 // function for computing the impulse response (reuse from previous experiment)
-void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::vector<float> &h)
+void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::vector<float> &h,const int &gain)
 {
   // allocate memory for the impulse response
   h.clear(); h.resize(num_taps, 0.0);
@@ -179,7 +182,7 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
       h[i] = norm_cutoff * sin (PI * norm_cutoff * (i - (num_taps - 1)/2)) / (PI * norm_cutoff * (i - (num_taps - 1)/2));
     }
     h[i] *= pow(sin(PI * i / num_taps),2);
-
+    h[i] *= gain;
   }
 }
 
