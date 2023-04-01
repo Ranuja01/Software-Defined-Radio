@@ -43,7 +43,7 @@ void (std::vector<float> &rds, std::vector<int> &sym){
 
   for(int i = 1; count<rds.size(); i++){
 
-    if(rds[i]>0){
+    if(rds[count]>0){
 
       sym[i]  = 1;
 
