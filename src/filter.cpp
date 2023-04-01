@@ -21,34 +21,33 @@ void makeSubList (std::vector<float> &subList, const std::vector<float> &list, i
 
 }
 
-// Does convolution with no down/up sample
+// Convolution with no up/down samples
 void blockConvolve(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block){
 
   for (int n = 0; n < block.size(); n++){
 		for (int k = 0; k < h.size(); k++){
-			if (n - k >=0){
+			if (n - k >=0){ .
 				if (n - k < block.size()){
-					filtered_block[n] += h[k] * block[n-k];
+					filtered_block[n] += h[k] * block[n-k]; //convolution over block samples
 				}
 			}else {
 		  	if (n - k + num_taps - 1 < state.size()){
-					filtered_block[n] += h[k] * state[(n - k) + num_taps - 1];
+					filtered_block[n] += h[k] * state[(n - k) + num_taps - 1]; //convolution over states
 				}
 			}
 		}
 	}
-  // Make the state as a sublist
+  // Makes the state as a sublist
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
 // Block convolution with downsample
 void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, unsigned short int &startIndex, int dRate){
-  // Hold the end index
+  // Holds the end index
   int endIndex = 0;
-  // Begin at the startIndex since each block would not start at 0
-  // Increment the loop variable by the downsample rate
+  // Begins at the startIndex since each block would not start at 0
+  // Increments the loop variable by the downsample rate
   for (int n = startIndex; n < block.size(); n+=dRate){
-    //std::cout << "bbbb: " << n << std::endl;
     for (int k = 0; k < h.size(); k++){
       if (n - k >= 0){
         if (n - k < block.size()){
@@ -66,7 +65,7 @@ void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std
   }
   // Define the start index for the next block
   startIndex = (endIndex - block.size()) + dRate;
-  // Create the state
+  // Creates the state
   makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
@@ -89,18 +88,15 @@ void blockResample(std::vector<float> &h, const std::vector<float> &block, std::
       j = (int)((n*dRate - k)/uRate);
 
       // Subtract by state size to normalize the offset done at the beginning
-			if (j >= 0) {
+			if (j >= 0) {    
         if (j < state.size()){
-          filtered_block[n - state.size()] += h[k] * state[j - state.size()];
-        } else if (j < block.size()){
-          filtered_block[n - state.size()] += h[k] * block[j - state.size()];
+          filtered_block[n - state.size()] += h[k] * state[j - state.size()]; // if index within state size, use value of state
+        } else if (j < block.size()){ 
+          filtered_block[n - state.size()] += h[k] * block[j - state.size()]; //if index is within block size, use value of block
         }
       }
-
 		}
-
 	}
-
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
@@ -108,24 +104,24 @@ void blockResample(std::vector<float> &h, const std::vector<float> &block, std::
 void makeOddEvenSubList (std::vector<float> &subList, const std::vector<float> &list, int first, int last){
   subList.clear();
   for (int i = first; i < last; i+=2){
-    subList.push_back(list[i]);
+    subList.push_back(list[i]); //adds current element to sub list
   }
 
 }
 
 void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I, const std::vector<float> &Q, float &prevI, float &prevQ){
-  std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
+  std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0); //initialized demod signal with zeros
   demodulatedSignal[0] = 0;
 
   for (int k = 0; k < I.size(); k++){
-    if (!( (I[k] * I[k]) + (Q[k] * Q[k]) == 0)){
-      demodulatedSignal[k] = (1.0/( (I[k] * I[k]) + (Q[k] * Q[k]) ) ) * (I[k] * (Q[k] - prevQ) - Q[k] * (I[k] - prevI));
+    if (!( (I[k] * I[k]) + (Q[k] * Q[k]) == 0)){ //checks if denominator is not 0
+      demodulatedSignal[k] = (1.0/( (I[k] * I[k]) + (Q[k] * Q[k]) ) ) * (I[k] * (Q[k] - prevQ) - Q[k] * (I[k] - prevI)); //calculates demod signal using prev IQ values
 
     }else {
-      demodulatedSignal[k] = 0;
+      demodulatedSignal[k] = 0; //if denominator is 0, signal is 0
     }
-    prevI = I[k];
-    prevQ = Q[k];
+    prevI = I[k]; //set prev I value to current val
+    prevQ = Q[k]; //set prev Q value to current val
   }
 
 }
@@ -149,7 +145,7 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
       h[i] = norm_cutoff * sin (PI * norm_cutoff * (i - (num_taps - 1)/2)) / (PI * norm_cutoff * (i - (num_taps - 1)/2));
     }
     h[i] *= pow(sin(PI * i / num_taps),2);
-    h[i] *= gain;
+    h[i] *= gain; //apply gain
   }
 }
 
@@ -164,10 +160,8 @@ void impulseResponseBPF(float Fs, float Fb, float Fe, unsigned short int num_tap
 	float norm_center = ((Fe + Fb)/2)/(Fs/2);
   float norm_pass = (Fe - Fb)/(Fs/2);
 
-
-
 	for (int i = 0; i < num_taps; i++){
-    //  ****TRY SPLITTING IF STATEMENT INTO TWO FOR LOOPS****
+    //  ****TRY SPLITTING IF STATEMENT INTO TWO FOR LOOPS**** - from previous exp
 		if (i == (num_taps - 1)/2){
 			h[i] = norm_pass;
 		} else {
@@ -210,19 +204,20 @@ void impulseResponseRootRaisedCosine(float Fs, unsigned short int num_taps, std:
 
 
   //for k in range(N_taps):
-
-  for(int i = 0; i<num_taps; i++){
-    t = ((i-num_taps/2))/Fs;
+    for(int i = 0; i<num_taps; i++){ 
+    t = ((i-num_taps/2))/Fs; //calculates time offset
     // we ignore the 1/T_symbol scale factor
-    if (t == 0.0){
-      h[i] = 1.0 + beta*((4/PI)-1);
+    
+    if (t == 0.0){ //checks for case where t =0
+      h[i] = 1.0 + beta*((4/PI)-1); //calcukates filter coeff
     }
 
-    else if (t == -T_symbol/(4*beta) or t == T_symbol/(4*beta)){
+    else if (t == -T_symbol/(4*beta) or t == T_symbol/(4*beta)){ 
       h[i] = (beta/sqrt(2))*(((1+2/PI)* \
           (sin(PI/(4*beta)))) + ((1-2/PI)*(cos(PI/(4*beta)))));
         }
-    else{ h[i] = (sin(PI*t*(1-beta)/T_symbol) +  \
+
+    else{ h[i] = (sin(PI*t*(1-beta)/T_symbol) +  \  //all other cases
           4*beta*(t/T_symbol)*cos(PI*t*(1+beta)/T_symbol))/ \
           (PI*t*(1-(4*beta*t/T_symbol)*(4*beta*t/T_symbol))/T_symbol);
         }
@@ -231,21 +226,17 @@ void impulseResponseRootRaisedCosine(float Fs, unsigned short int num_taps, std:
   //return impulseResponseRRC
 }
 
-
-// function for computing the impulse response (reuse from previous experiment)
+// function for computing the impulse response - reused from previous experiment
 void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
 {
 
   // allocate memory for the output (filtered) data
-  y.clear(); y.resize(x.size()+h.size()-1, 0.0);
+  y.clear(); y.resize(x.size()+h.size()-1, 0.0); // resizes output vector
   for (int n = 0; n < y.size(); n++){
     for (int k = 0; k < h.size(); k++){
-      if (n - k >= 0 && n - k < x.size()){
-        y[n] += h[k] * x[n-k];
+      if (n - k >= 0 && n - k < x.size()){ // if index is within bounds
+        y[n] += h[k] * x[n-k]; //convolve filter coeff with input
       }
     }
   }
-  // the rest of the code in this function is to be completed by you
-  // based on your understanding and the Python code from the first lab
-
 }
