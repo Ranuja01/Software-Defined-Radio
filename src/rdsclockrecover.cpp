@@ -55,7 +55,7 @@ void (std::vector<float> &rds, std::vector<int> &sym){
 
     }
 
-    skip += skip;
+    count += skip;
 
   }
 
