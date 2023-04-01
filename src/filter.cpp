@@ -12,7 +12,7 @@ Ontario, Canada
 #include <cmath>
 #define PI 3.14159265358979323846
 
-
+// Makes sublist
 void makeSubList (std::vector<float> &subList, const std::vector<float> &list, int first, int last){
   subList.clear();
   for (int i = first; i < last; i++){
@@ -21,50 +21,39 @@ void makeSubList (std::vector<float> &subList, const std::vector<float> &list, i
 
 }
 
-
-
-
+// Does convolution with no down/up sample
 void blockConvolve(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block){
 
-  //std::cout << filtered_block.size() << " " << h.size() << "  " << block.size() << std::endl;
   for (int n = 0; n < block.size(); n++){
 		for (int k = 0; k < h.size(); k++){
 			if (n - k >=0){
 				if (n - k < block.size()){
 					filtered_block[n] += h[k] * block[n-k];
-        //  std::cout<< "if   " << filtered_block[n] << std::endl;
-
 				}
 			}else {
 		  	if (n - k + num_taps - 1 < state.size()){
 					filtered_block[n] += h[k] * state[(n - k) + num_taps - 1];
-          //          std::cout<< "else   " << filtered_block[n] << std::endl;
 				}
 			}
 		}
 	}
-
-//  std::cout << "blockconv" << std::endl;
+  // Make the state as a sublist
 	makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
-//blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
+// Block convolution with downsample
 void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, unsigned short int &startIndex, int dRate){
+  // Hold the end index
   int endIndex = 0;
-  for (int n = 0; n < block.size(); n+=dRate){
+  // Begin at the startIndex since each block would not start at 0
+  // Increment the loop variable by the downsample rate
+  for (int n = startIndex; n < block.size(); n+=dRate){
     //std::cout << "bbbb: " << n << std::endl;
     for (int k = 0; k < h.size(); k++){
       if (n - k >= 0){
         if (n - k < block.size()){
+          // Subtract the index by the start and divide by the downsample rate to normalize
           filtered_block[(n - startIndex)/dRate] += h[k] * block[n-k];
-          if(k == 0 && n-k == 0){
-          //	std::cout << "bbbb: " <<  h[k] << std::endl;
-          //	std::cout << "cccc: " <<  block[n-k] << std::endl;
-          }
-          if(k == 0 && n-k == 10){
-          //	std::cout << "dddd: " <<  h[k] << std::endl;
-          //	std::cout << "eeee: " <<  block[n-k] << std::endl;
-          }
         }
       }else {
         if (n - k + num_taps - 1 < state.size()){
@@ -72,48 +61,34 @@ void blockProcessing(std::vector<float> &h, const std::vector<float> &block, std
         }
       }
 
-
-
-
-
     }
     endIndex = n;
   }
-  //startIndex = 1 + (endIndex + block.size() % dRate) - block.size();
+  // Define the start index for the next block
   startIndex = (endIndex - block.size()) + dRate;
-/*
-  for (int i = filtered_block.size() - 5140; i < filtered_block.size() - 5100;i++){
-    //std::cout << "aaaa: " << filtered_block[i] << std::endl;
-    //std::cout << "bbbb: " <<  block[i] << std::endl;
-  //	std::cout << "cccc: " <<  h[i] << std::endl;
-
-}
-  /*
-  for (int i = 51000; i < block.size();i++){
-  //	std::cout << "aaaa: " << filtered_block[i] << std::endl;
-    //std::cout << "bbbb: " <<  block[i] << std::endl;
-
-      std::cout << i << " dddd: " <<  block[i] << std::endl;
-      std::cout << (i)/dRate << " eeee: " <<  filtered_block[(i)/dRate] << std::endl;
-  }*/
-  //std::cout << "asdfghjkl: " << filtered_block[filtered_block.size() - 2] << std::endl;
-  //std::cout << startIndex << std::endl;
-  //startIndex = 0;
+  // Create the state
   makeSubList(state,block,block.size() - num_taps + 1, block.size());
 }
 
-
+// Block convolution with resampling
 void blockResample(std::vector<float> &h, const std::vector<float> &block, std::vector<float> &state, int num_taps, std::vector<float> &filtered_block, int dRate, int uRate){
 	int p = 0;
   int j = 0;
 
+  // Start at the state size, such that any variable under the size would represent state values
+  // This is so that negative indices won't be acquired
 	for (int n = state.size(); n < block.size() + state.size(); n++){
-		//std::cout << "bbbb: " << n << std::endl;
+		// Acquire the phase
+    // This defines the start position of the base vector
     p = (n * dRate)%uRate;
 		for (int k = p; k < h.size(); k+= uRate){
 
+      // By multiplying by the base index, subtracting the offset k and divide by the upsample uRate
+      // This normalizes the index to where it should be
+      // This is the fast resample
       j = (int)((n*dRate - k)/uRate);
 
+      // Subtract by state size to normalize the offset done at the beginning
 			if (j >= 0) {
         if (j < state.size()){
           filtered_block[n - state.size()] += h[k] * state[j - state.size()];
@@ -139,19 +114,12 @@ void makeOddEvenSubList (std::vector<float> &subList, const std::vector<float> &
 }
 
 void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I, const std::vector<float> &Q, float &prevI, float &prevQ){
-  //demodulatedSignal.clear();
   std::fill (demodulatedSignal.begin(),demodulatedSignal.end(),0);
   demodulatedSignal[0] = 0;
-  /*
-  std::cout <<"I "<< I[0] <<std::endl;
-  std::cout <<"Q "<<Q[0] <<std::endl;
-  std::cout <<"prevI "<<prevI <<std::endl;
-  std::cout <<"prevQ "<<prevQ <<std::endl;
-*/
+
   for (int k = 0; k < I.size(); k++){
     if (!( (I[k] * I[k]) + (Q[k] * Q[k]) == 0)){
       demodulatedSignal[k] = (1.0/( (I[k] * I[k]) + (Q[k] * Q[k]) ) ) * (I[k] * (Q[k] - prevQ) - Q[k] * (I[k] - prevI));
-
 
     }else {
       demodulatedSignal[k] = 0;
@@ -160,7 +128,6 @@ void fmDemod (std::vector<float> &demodulatedSignal, const std::vector<float> &I
     prevQ = Q[k];
   }
 
-//	std::cout <<demodulatedSignal[0] <<std::endl;
 }
 
 // function for computing the impulse response (reuse from previous experiment)
