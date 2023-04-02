@@ -6,3 +6,4 @@ The project description is available in the project [document](doc/3dy4-project-
 
 All the source code for the project must be submitted before the end of March 31. The project cross-examinations and oral presentations will run in the week of April 4 and the detailed final project report is due on April 8. 
 
+The primary files to be executed are filter.cpp, iofunc.cpp, PLL.cpp, and Final_file.cpp.
