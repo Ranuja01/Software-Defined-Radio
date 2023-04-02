@@ -6,6 +6,3 @@ The project description is available in the project [document](doc/3dy4-project-
 
 All the source code for the project must be submitted before the end of March 31. The project cross-examinations and oral presentations will run in the week of April 4 and the detailed final project report is due on April 8. 
 
-
-![image](https://user-images.githubusercontent.com/90365245/221984555-4b975e26-a427-4cbc-9781-187b5b980434.png)
-< - delete before due date
