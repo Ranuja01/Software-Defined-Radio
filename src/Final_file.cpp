@@ -37,23 +37,22 @@ Ontario, Canada
 //rtl_sdr -f 99.9M -s 2.4M -| ./project 0 1 | aplay -c 1  -f S16_LE -r 48000
 
 #define PI 3.14159265358979323846
-
+//Reads Block Data
 void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float> &block_data){
-	std::vector<char> raw_data(num_samples);
+	std::vector<char> raw_data(num_samples); //vector of chars to store raw data read
 	std::cin.read(reinterpret_cast<char*>(&raw_data[0]), num_samples*sizeof(char));
-	for (int k=0; k<(int)num_samples; k++){
-		block_data[k] = float(((unsigned char)raw_data[k]-128)/128.0);
+	for (int k=0; k<(int)num_samples; k++){ 
+		block_data[k] = float(((unsigned char)raw_data[k]-128)/128.0); //converts raw data to float
 	}
 	}
 
-
+//Main function for RF thread
 void rfThread(std::vector<float> &rf_coeff, unsigned short int &rf_taps, unsigned short int &rf_decim, int &blockSize,std::queue<float> &demod_Q, std::queue<float> &rds_demod_Q){
 
 
   int blockCount = 0;
   std::vector<float> state_i(rf_taps - 1,0);
   std::vector<float> state_q(rf_taps - 1,0);
-
 
   float prevI = 0;
   float prevQ = 0;
@@ -69,31 +68,32 @@ void rfThread(std::vector<float> &rf_coeff, unsigned short int &rf_taps, unsigne
 
   for (unsigned int blockCount =0; ;blockCount++){
    
-    readStdinBlockData(blockSize,blockCount,audio_data);
-    if (std::cin.rdstate()!=0){
+    readStdinBlockData(blockSize,blockCount,audio_data); //reads a block of audio data into the vector
+    if (std::cin.rdstate()!=0){ //if there was error while readin then break
       break;
     }
 
-    std::fill (filtered_i.begin(),filtered_i.end(),0);
-    makeOddEvenSubList(block,audio_data,0,blockSize);
-    blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim);
-    std::fill (filtered_q.begin(),filtered_q.end(),0);
-    makeOddEvenSubList(block,audio_data,1,blockSize);
-    blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim);
-
+    std::fill (filtered_i.begin(),filtered_i.end(),0); //intialize to all 0
+    makeOddEvenSubList(block,audio_data,0,blockSize); //extracts even samples from current block of audio data
+    blockProcessing(rf_coeff, block, state_i, rf_taps, filtered_i,startIndex_i,rf_decim); //RF filtering to even samples stored in filtered_i - I samples
+	  
+    std::fill (filtered_q.begin(),filtered_q.end(),0); //intialize to all 0
+    makeOddEvenSubList(block,audio_data,1,blockSize); //extracts odd samples from current block of audio data
+    blockProcessing(rf_coeff, block, state_q, rf_taps, filtered_q,startIndex_q,rf_decim); //RF filtering to odd samples stored in filtered_q - Q samples
+ 
+// Demodulate the FM signal using IQ compponents of filtered signal
     fmDemod (demodulatedSignal, filtered_i, filtered_q,prevI,prevQ);
 
-
-    for (int i = 0; i < demodulatedSignal.size(); i++){
-      demod_Q.push(demodulatedSignal[i]);
-      rds_demod_Q.push(demodulatedSignal[i]);
+    for (int i = 0; i < demodulatedSignal.size(); i++){ 
+      demod_Q.push(demodulatedSignal[i]); //pushes samples of demod signal to demod_Q
+      rds_demod_Q.push(demodulatedSignal[i]); //pushes samples of demod signal to rds_demod_Q
     }
 
   }
 
 }
 
-
+//Main Function for audio thread
 void audioThread(std::vector<float> &stereo_extraction_coeff, std::vector<float> &carrier_coeff, std::vector<float> &mono_extraction_coeff, std::vector<float> &allPass_coeff, std::vector<float> &stereo_coeff , unsigned short int &audio_taps, unsigned short int &rf_decim, unsigned short int &audio_decim, unsigned short int &audio_upSample, int &blockSize, std::queue<float> &demod_Q, std::vector<float> &stereo_data_final, float &audio_Fs, bool &exitFlag, int type){
 
   
@@ -146,104 +146,101 @@ void audioThread(std::vector<float> &stereo_extraction_coeff, std::vector<float>
   std::vector<float> stereo ((filtered_stereo.size()*2),0);
   std::vector<float>filtMonoz(audio_taps,0); // Added
 
+// Loop for Audio Processing 
   for (unsigned int blockCount =0; ;blockCount++){
 
-    if (demod_Q.empty())
+    if (demod_Q.empty()) //checks if there is data in queue
       exit(1);
 
     for (int i = 0; i < demodulatedSignal.size(); i++){
 
-      demodulatedSignal[i] = demod_Q.front();
+      demodulatedSignal[i] = demod_Q.front(); // extract samples from queue
       demod_Q.pop();
     }
 
-    std::fill (stereo_extraction_block.begin(),stereo_extraction_block.end(),0);
+    std::fill (stereo_extraction_block.begin(),stereo_extraction_block.end(),0); //intialize to all 0
+    std::fill (pll_block.begin(),pll_block.end(),0); //intialize to all 0
 
-
-    std::fill (pll_block.begin(),pll_block.end(),0);
-
+ //if no upsampling is required
     if (audio_upSample == 1){
       blockProcessing(stereo_extraction_coeff, demodulatedSignal, stereo_extraction_state, audio_taps, stereo_extraction_block,startIndex_stereo, audio_decim);
       blockProcessing(carrier_coeff, demodulatedSignal, state_pll, audio_taps, pll_block,startIndex_pll, audio_decim);
 
     }else{
-    
+// start upsampling the demod signal and process filters
       blockResample(stereo_extraction_coeff, demodulatedSignal, stereo_extraction_state, audio_taps, stereo_extraction_block,audio_decim,audio_upSample);
       blockResample(carrier_coeff, demodulatedSignal, state_pll, audio_taps, pll_block, audio_decim,audio_upSample);
      
     }
 
    
-    std::fill (mono_extraction_block.begin(),mono_extraction_block.end(),0);
-   
+    std::fill (mono_extraction_block.begin(),mono_extraction_block.end(),0); //intialize to all 0
+
     
 
-    if (audio_upSample == 1){
+    if (audio_upSample == 1){ //use block processing if value is 1 to extract mono signal
       blockProcessing(mono_extraction_coeff, demodulatedSignal, mono_extraction_state, audio_taps, mono_extraction_block,startIndex_mono, audio_decim);
-    }else{
-      
+    }else{ //use block resample otherwise to extract mono signal
       blockResample(mono_extraction_coeff, demodulatedSignal, mono_extraction_state, audio_taps, mono_extraction_block,audio_decim,audio_upSample);
     
     }
 
+//Stereo type
 if(type==2){
-    std::fill (mono_block_filtered.begin(),mono_block_filtered.end(),0);
-    blockConvolve(allPass_coeff, mono_extraction_block, allPass_State, audio_taps, mono_block_filtered);
+    std::fill (mono_block_filtered.begin(),mono_block_filtered.end(),0); //intialize to all 0
+// Convolvution of mono_extraction_block with allPass_coeff stored into mono_block_filtered
+    blockConvolve(allPass_coeff, mono_extraction_block, allPass_State, audio_taps, mono_block_filtered); 
 
-    std::fill (pll_processed.begin(),pll_processed.end(),0);
+    std::fill (pll_processed.begin(),pll_processed.end(),0); //intialize to all 0
+// Apply FM PLL to pll_block and store in pll_processed
     fmPLL(pll_processed, pll_block, freq, fs, ncoScale, phaseadjust, normBandwidth,pll_variables);
 
-    std::fill (stereo_block.begin(),stereo_block.end(),0);
-
-    std::fill (filtered_stereo.begin(),filtered_stereo.end(),0);
+    std::fill (stereo_block.begin(),stereo_block.end(),0); //intialize to all 0
+    std::fill (filtered_stereo.begin(),filtered_stereo.end(),0); //intialize to all 0
 
     for (int i = 0; i < pll_block.size(); i++){
-	    stereo_block [i] = stereo_extraction_block[i] * pll_processed[i];
+	    stereo_block [i] = stereo_extraction_block[i] * pll_processed[i]; //multiply stereo_extraction_block and pll_processed to form stereo_block
 	  }
-
+// Convolution of stereo_block with stereo_coefficients to get filtered stereo signal
     blockConvolve(stereo_coeff, stereo_block, stereo_state, audio_taps, filtered_stereo);
 
-    std::fill (stereoLeft.begin(),stereoLeft.end(),0);
-
-    std::fill (stereoRight.begin(),stereoRight.end(),0);
-
-    std::fill (stereo.begin(),stereo.end(),0);
-
-    for (int i = 0; i < stereoLeft.size(); i++){
-      stereoLeft [i] = (filtered_stereo[i] + mono_block_filtered[i])/2;
-      stereoRight [i] = (mono_block_filtered[i] - filtered_stereo[i])/2;
-      stereo[2*i] = stereoLeft[i];
-      stereo[2*i+1] = stereoRight[i];}
-
-  
+    std::fill (stereoLeft.begin(),stereoLeft.end(),0); //intialize to all 0
+    std::fill (stereoRight.begin(),stereoRight.end(),0); //intialize to all 0
+    std::fill (stereo.begin(),stereo.end(),0); //intialize to all 0
 	
-    std::vector<short int> final_data(stereo.size());
-    for (unsigned int k=0;k<stereo.size();k++){
-       if(std::isnan(stereo[k])) final_data[k]=0;
-       else final_data[k] = static_cast<short int>(stereo[k]*16384);
-
+// Combine mono_block_filtered and filtered_stereo signals to form stereo signal
+    for (int i = 0; i < stereoLeft.size(); i++){
+      stereoLeft [i] = (filtered_stereo[i] + mono_block_filtered[i])/2; //average of samples is left channel value
+      stereoRight [i] = (mono_block_filtered[i] - filtered_stereo[i])/2;//difference of samples is right channel value
+      stereo[2*i] = stereoLeft[i]; // left channel samples stored in stereo buffer
+      stereo[2*i+1] = stereoRight[i];} //right channel samples stored in stereo buffer
+	
+    std::vector<short int> final_data(stereo.size()); //vector to store the final stereo audio data
+    for (unsigned int k=0;k<stereo.size();k++){ // loops thru each element in stereo vector and convert float value to int value
+       if(std::isnan(stereo[k])) final_data[k]=0; // if sample is not a number set to 0
+       else final_data[k] = static_cast<short int>(stereo[k]*16384); // if sample is not not a number, convert to short int
      }
 
-     fwrite(&final_data[0], sizeof(short int), final_data.size(), stdout);}
+     fwrite(&final_data[0], sizeof(short int), final_data.size(), stdout);} // output final processed audio data to standard output
      
-     
+     //if audio input is mono
     else{
-		std::vector<short int> final_data(mono_extraction_block.size());
-	for (unsigned int k=0;k<mono_extraction_block.size();k++){
-       if(std::isnan(mono_extraction_block[k])) final_data[k]=0;
-       else final_data[k] = static_cast<short int>(mono_extraction_block[k]*16384);
+		std::vector<short int> final_data(mono_extraction_block.size()); //vector to store the final mono audio data
+	for (unsigned int k=0;k<mono_extraction_block.size();k++){// iterates thru mono extraction block and processes each sample
+       if(std::isnan(mono_extraction_block[k])) final_data[k]=0; // if sample is not a number set to 0
+       else final_data[k] = static_cast<short int>(mono_extraction_block[k]*16384); // if sample is not not a number, convert to short int
 
      }
 
-     fwrite(&final_data[0], sizeof(short int), final_data.size(), stdout);}
+     fwrite(&final_data[0], sizeof(short int), final_data.size(), stdout);}  // output final processed audio data to standard output
 
   }
 
 }
-
+//RDS thread for RDS data
 void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds_pll_coeff, std::vector<float> &RDS_resample_coeff, std::vector<float> &rds_allPass_coeff, unsigned short int &audio_taps, unsigned short int &rf_decim, int &blockSize, std::queue<float> &rds_demod_Q, float &audio_Fs, unsigned short int &audio_decim, unsigned short int &audio_upSample,int &mode,std::vector<float> &cosFilt_coeff){
 
-	if (mode == 0 || mode == 2){
+	if (mode == 0 || mode == 2){ // checks if mode is 0 or 2
 
 		std::vector<float> pll_variables(5,0);
 		pll_variables[0] = 0;
@@ -285,66 +282,64 @@ void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds
 		std::vector<float> RDS_Cos_Filtered ((resampled_RDS.size()),0);
 
 
-		float rds_upSample = 171;
+		float rds_upSample = 171; // set the upsample and downsample ratio for RDS signal based on mode
 		float rds_downSample = 640;
 		if (mode == 2){
 			rds_upSample = 19;
 			rds_downSample = 48;
 		}
 
-		for (unsigned int blockCount =0; ;blockCount++){
+		for (unsigned int blockCount =0; ;blockCount++){ //processing demodulated signal in blocks
 	  
 
-	    for (int i = 0; i < demodulatedSignal.size(); i++){
+	    for (int i = 0; i < demodulatedSignal.size(); i++){ 
 	    
-	      demodulatedSignal[i] = rds_demod_Q.front();
+	      demodulatedSignal[i] = rds_demod_Q.front(); //reads demodulated signal from queue
 	      rds_demod_Q.pop();
 
 	    }
 	
-
-			std::fill (rds_extraction_block.begin(),rds_extraction_block.end(),0);
-			std::fill (pll_block.begin(),pll_block.end(),0);
-
+			std::fill (rds_extraction_block.begin(),rds_extraction_block.end(),0);//intialize to all 0
+			std::fill (pll_block.begin(),pll_block.end(),0);//intialize to all 0
+			
+// Convolution of the RDS extraction filter coefficients with demodulated RDS signal
 			blockConvolve(rds_extraction_coeff, demodulatedSignal, rds_extraction_state, audio_taps, rds_extraction_block);
 			for (int i = 0; i < pll_block.size(); i++){
-				pll_block[i] *= pll_block[i];
+				pll_block[i] *= pll_block[i]; // square the values in PLL block
 			}
 
-			std::fill (pll_filtered.begin(),pll_filtered.end(),0);
-			std::fill (filtered_RDS.begin(),filtered_RDS.end(),0);
+			std::fill (pll_filtered.begin(),pll_filtered.end(),0);//intialize to all 0
+			std::fill (filtered_RDS.begin(),filtered_RDS.end(),0);//intialize to all 0
 
 	// ALL pass filter
-	    blockConvolve(rds_allPass_coeff, rds_extraction_block, allPass_State, audio_taps, filtered_RDS);
+	    blockConvolve(rds_allPass_coeff, rds_extraction_block, allPass_State, audio_taps, filtered_RDS); //convolution of all- pass filter coeff with fitered RDS signal
 	// Bandpass filter
-	    blockConvolve(rds_pll_coeff, pll_block, state_pll, audio_taps, pll_filtered);
+	    blockConvolve(rds_pll_coeff, pll_block, state_pll, audio_taps, pll_filtered); // convolution of PLL filter coeffs with PLL block
 
-			std::fill (pll_processed.begin(),pll_processed.end(),0);
-
+			std::fill (pll_processed.begin(),pll_processed.end(),0);//intialize to all 0
+			
+// Apply phase-locked loop (PLL) to PLL filtered signal
 	    fmPLL(pll_processed,pll_filtered, freq, fs, ncoScale, phaseadjust, normBandwidth, pll_variables);
 
-			std::fill (RDS_block.begin(),RDS_block.end(),0);
+			std::fill (RDS_block.begin(),RDS_block.end(),0);//intialize to all 0
 
 			for (int i = 0; i < pll_block.size(); i++){
-		    RDS_block [i] = rds_extraction_block[i] * pll_processed[i];
+		    RDS_block [i] = rds_extraction_block[i] * pll_processed[i]; // Multiply RDS extraction block with PLL processed block to obtain RDS block
+
 		  }
 
-			std::fill (resampled_RDS.begin(),resampled_RDS.end(),0);
-
+			std::fill (resampled_RDS.begin(),resampled_RDS.end(),0);//intialize to all 0
+			
+// Resampling RDS block with resample filter coefficients
 			blockResample(RDS_resample_coeff, RDS_block, RDS_resample_state, audio_taps, resampled_RDS,rds_downSample,rds_upSample);
+			
+			std::fill (RDS_Cos_Filtered.begin(),RDS_Cos_Filtered.end(),0);//intialize to all 0
 
-
-			std::fill (RDS_Cos_Filtered.begin(),RDS_Cos_Filtered.end(),0);
-			blockConvolve(cosFilt_coeff, resampled_RDS, cosFilt_state, audio_taps, RDS_Cos_Filtered);
-
-
+			blockConvolve(cosFilt_coeff, resampled_RDS, cosFilt_state, audio_taps, RDS_Cos_Filtered);// convolution of cosine filter coeffs with resampled RDS signal
 
 	  }
 	}
 }
-
-
-
 
 
 int main(int argc, char* argv[])
