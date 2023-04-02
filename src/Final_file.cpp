@@ -341,16 +341,14 @@ void rdsThread(std::vector<float> &rds_extraction_coeff, std::vector<float> &rds
 	}
 }
 
-
+// Main Function
 int main(int argc, char* argv[])
 {
-
-
-  int mode; //0,1,2,3
-  int type; //1:mono, 2:stereo
+  int mode; //can be 0,1,2,3
+  int type; //can be 1:mono or 2:stereo
   
   // Mode Selection
-  if (argc<3){
+  if (argc<3){ //Default mode and type
     std::cerr << "Operating in default mode 0 and mono" << std::endl;
     mode = 0;
     type = 1;
@@ -358,18 +356,18 @@ int main(int argc, char* argv[])
   } else if (argc==3){
     mode=atoi(argv[1]);
     type=atoi(argv[2]);
-    if (mode>3){
+    if (mode>3){ // Invalid mode
       std::cerr << "Wrong mode " << mode << std::endl;
       exit(1);}
-  } else {
+  } else { // Prints usage help and exit
     std::cerr << "Usage: " << argv[0] << std::endl;
     std::cerr << "or " << std::endl;
     std::cerr << "Usage: " << argv[0] << " <mode>" << std::endl;
     std::cerr << "\t\t <mode> is a value from 0-3" << argv[0] << std::endl;
     exit(1);}
 
-  std::cerr << "Operating in mode " << mode << std::endl;
-  std::cerr << "Operating in Type " << mode << std::endl;
+  std::cerr << "Operating in mode " << mode << std::endl; // prints selected mode
+  std::cerr << "Operating in Type " << mode << std::endl; // prints selected type
   
   
   // RF variables
@@ -394,12 +392,15 @@ int main(int argc, char* argv[])
   float audio_Fc = 16000.0;
   int blockSize = 1024 * rf_decim * audio_decim * 2;
   float rds_sampleFreq = 64125;
-
-  if(mode == 0){
+	
+// Selects RF and audio parameters based on the mode selected
+	// MODE 0
+  if(mode == 0){ 
     rf_Fs = 2400000.0;
     rf_decim = 10;
   	audio_Fs = 48000.0;
     audio_decim = 5;
+	// MODE 1
   }else if (mode == 1){
     rf_Fs = 1440000.0;
   	rf_taps = 51;
@@ -408,7 +409,7 @@ int main(int argc, char* argv[])
   	audio_Fs = 48000.0;
   	audio_taps = 51;
     audio_decim = 6;
-    
+ 	// MODE 2
   }else if (mode == 2){
     rf_Fs = 2400000.0;
     rf_taps = 51; //changed
@@ -420,7 +421,7 @@ int main(int argc, char* argv[])
 	audio_upSample = 147;
 	audio_decim = 800;
 	rds_sampleFreq = 95000;
-
+ 	// MODE 3
   }else if (mode == 3){
     rf_Fs = 1920000.0;
     rf_taps = 51;
@@ -435,27 +436,23 @@ int main(int argc, char* argv[])
   int blockCount = 0;
 
 
-
-	std::vector<float> rf_coeff;
+// generates low pass filter coefficients for RF filtering
+	std::vector<float> rf_coeff; 
 	impulseResponseLPF(rf_Fs, rf_Fc, rf_taps, rf_coeff,1);
-  
-
+// generates band pass filter coefficients for stereo extraction
 	std::vector<float> stereo_extraction_coeff;
-	
 	impulseResponseBPF(audio_Fs*audio_upSample, audio_Fb, audio_Fe, audio_taps*audio_upSample, stereo_extraction_coeff,1);
-
+// generates band pass filter coefficients for carrier extraction
 	std::vector<float> carrier_coeff;
 	impulseResponseBPF(audio_Fs*audio_upSample, carrier_Fb, carrier_Fe, audio_taps*audio_upSample, carrier_coeff,1);
-
+// generates low pass filter coefficients for stereo filtering
 	std::vector<float> stereo_coeff;
-	impulseResponseLPF(48000*audio_upSample, 19000, audio_taps*audio_upSample, stereo_coeff,audio_upSample);
-	
+	impulseResponseLPF(48000*audio_upSample, 19000, audio_taps*audio_upSample, stereo_coeff,audio_upSample);	
+// generates low pass filter coefficients for mono extraction	
 	std::vector<float> mono_extraction_coeff;
 	impulseResponseLPF(audio_Fs*audio_upSample, audio_Fc, audio_taps*audio_upSample, mono_extraction_coeff,audio_upSample);
-	
-	
-	
-	
+
+// all pass filter for stereo audio	
 	unsigned short int allPass_taps = 74;
 	std::vector<float> allPass_coeff;
 	impulseResponseLPF(48000*audio_upSample,16500, allPass_taps*audio_upSample, allPass_coeff, audio_upSample);
@@ -464,33 +461,27 @@ int main(int argc, char* argv[])
 	std::vector<float> mono_extraction_state(audio_taps - 1,0);
 	
 	// Start RDS Specific variables
-
+	
+// band pass filter for extracting RDS signal
 	std::vector<float> rds_extraction_coeff;
 	impulseResponseBPF(240000, rds_Fb, rds_Fe, audio_taps, rds_extraction_coeff,audio_upSample);
-
+// all pass filter for RDS signal
 	std::vector<float> rds_allPass_coeff;
 	impulseResponseLPF(240000,57000, allPass_taps, rds_allPass_coeff,audio_upSample);
-
+// band pass filter for RDS signal PLL
 	std::vector<float> rds_pll_coeff;
 	impulseResponseBPF(240000,113500, 114500, audio_taps, rds_pll_coeff,audio_upSample);
-
+// low pass filter for resampling RDS signal
 	std::vector<float> RDS_resample_coeff;
 	impulseResponseLPF(240000,57000, audio_taps, RDS_resample_coeff,audio_upSample);
-
+// root raised cosine filter for RDS signal
 	std::vector<float> cosFilt_coeff;
 	impulseResponseRootRaisedCosine(rds_sampleFreq, audio_taps, cosFilt_coeff);
 
 	// End RDS Specific Variables
-
-	
-
 	unsigned short int startIndex_mono = 0;
-
-
-	std::vector<float> stereo_data_final;
-    
-
-	std::queue<float> demod_Q;
+	std::vector<float> stereo_data_final; /
+    	std::queue<float> demod_Q;
 	std::queue<float> rds_demod_Q;
 	
 	bool exitFlag = false;
